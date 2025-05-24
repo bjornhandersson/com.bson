@@ -9,7 +9,7 @@ namespace Raft.Demo;
 /// </summary>
 public class DistributedSettings
 {
-    private readonly Raft.Client.Raft _raft;
+    private readonly Client.Raft _raft;
     private readonly ConcurrentDictionary<string, string> _settings = new();
     private readonly object _lock = new();
 
@@ -72,19 +72,38 @@ public class DistributedSettings
     }
 
     /// <summary>
-    /// Get a setting value
+    /// Get a setting value with read metadata
     /// </summary>
-    public string? Get(string name)
+    public SettingReadResult Get(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Setting name cannot be null or empty", nameof(name));
 
+        var isLeader = _raft.State == ServerState.Leader;
+
         lock (_lock)
         {
             _settings.TryGetValue(name, out var value);
-            Console.WriteLine($"[{NodeId}] Get '{name}' = '{value ?? "null"}'");
-            return value;
+            var readType = isLeader ? "leader read" : "follower read";
+            Console.WriteLine($"[{NodeId}] Get '{name}' = '{value ?? "null"}' ({readType})");
+
+            return new SettingReadResult
+            {
+                Value = value,
+                IsFromLeader = isLeader,
+                NodeId = NodeId,
+                CurrentLeader = CurrentLeader,
+                NodeState = State,
+            };
         }
+    }
+
+    /// <summary>
+    /// Get a setting value (simple version for backward compatibility)
+    /// </summary>
+    public string? GetValue(string name)
+    {
+        return Get(name).Value;
     }
 
     /// <summary>
@@ -121,32 +140,81 @@ public class DistributedSettings
     }
 
     /// <summary>
-    /// Get all settings
+    /// Get all settings with read metadata
     /// </summary>
-    public Dictionary<string, string> GetAll()
+    public SettingsReadResult GetAll()
     {
+        var isLeader = _raft.State == ServerState.Leader;
+
         lock (_lock)
         {
-            var result = new Dictionary<string, string>(_settings);
-            Console.WriteLine($"[{NodeId}] GetAll() returned {result.Count} settings");
-            return result;
+            var settings = new Dictionary<string, string>(_settings);
+            var readType = isLeader ? "leader read" : "follower read";
+            Console.WriteLine(
+                $"[{NodeId}] GetAll() returned {settings.Count} settings ({readType})"
+            );
+
+            return new SettingsReadResult
+            {
+                Settings = settings,
+                IsFromLeader = isLeader,
+                NodeId = NodeId,
+                CurrentLeader = CurrentLeader,
+                NodeState = State,
+            };
         }
     }
 
     /// <summary>
-    /// Check if a setting exists
+    /// Get all settings (simple version for backward compatibility)
     /// </summary>
-    public bool Contains(string name)
+    public Dictionary<string, string> GetAllValues()
+    {
+        return GetAll().Settings;
+    }
+
+    /// <summary>
+    /// Check if a setting exists with read metadata
+    /// </summary>
+    public SettingExistsResult Contains(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
-            return false;
+        {
+            return new SettingExistsResult
+            {
+                Exists = false,
+                IsFromLeader = _raft.State == ServerState.Leader,
+                NodeId = NodeId,
+                CurrentLeader = CurrentLeader,
+                NodeState = State,
+            };
+        }
+
+        var isLeader = _raft.State == ServerState.Leader;
 
         lock (_lock)
         {
             var exists = _settings.ContainsKey(name);
-            Console.WriteLine($"[{NodeId}] Contains '{name}' = {exists}");
-            return exists;
+            var readType = isLeader ? "leader read" : "follower read";
+            Console.WriteLine($"[{NodeId}] Contains '{name}' = {exists} ({readType})");
+
+            return new SettingExistsResult
+            {
+                Exists = exists,
+                IsFromLeader = isLeader,
+                NodeId = NodeId,
+                CurrentLeader = CurrentLeader,
+                NodeState = State,
+            };
         }
+    }
+
+    /// <summary>
+    /// Check if a setting exists (simple version for backward compatibility)
+    /// </summary>
+    public bool ContainsKey(string name)
+    {
+        return Contains(name).Exists;
     }
 
     /// <summary>
@@ -210,5 +278,32 @@ public class DistributedSettings
         public required string Operation { get; init; }
         public required string Name { get; init; }
         public required string Value { get; init; }
+    }
+
+    public record SettingReadResult
+    {
+        public string? Value { get; init; }
+        public bool IsFromLeader { get; init; }
+        public string NodeId { get; init; } = string.Empty;
+        public string? CurrentLeader { get; init; }
+        public ServerState NodeState { get; init; }
+    }
+
+    public record SettingsReadResult
+    {
+        public Dictionary<string, string> Settings { get; init; } = new();
+        public bool IsFromLeader { get; init; }
+        public string NodeId { get; init; } = string.Empty;
+        public string? CurrentLeader { get; init; }
+        public ServerState NodeState { get; init; }
+    }
+
+    public record SettingExistsResult
+    {
+        public bool Exists { get; init; }
+        public bool IsFromLeader { get; init; }
+        public string NodeId { get; init; } = string.Empty;
+        public string? CurrentLeader { get; init; }
+        public ServerState NodeState { get; init; }
     }
 }

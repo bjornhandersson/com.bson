@@ -76,12 +76,16 @@ class Program
         var randomFollower = followers.FirstOrDefault() ?? settingsCluster[1];
 
         Console.WriteLine($"\nReading from leader ({leader.NodeId}):");
-        Console.WriteLine($"  database.host = {leader.Get("database.host")}");
-        Console.WriteLine($"  api.timeout = {leader.Get("api.timeout")}");
+        var dbHostResult = leader.Get("database.host");
+        var timeoutResult = leader.Get("api.timeout");
+        Console.WriteLine($"  database.host = {dbHostResult.Value} (from leader: {dbHostResult.IsFromLeader})");
+        Console.WriteLine($"  api.timeout = {timeoutResult.Value} (from leader: {timeoutResult.IsFromLeader})");
 
         Console.WriteLine($"\nReading from follower ({randomFollower.NodeId}):");
-        Console.WriteLine($"  database.host = {randomFollower.Get("database.host")}");
-        Console.WriteLine($"  logging.level = {randomFollower.Get("logging.level")}");
+        var dbHostFollowerResult = randomFollower.Get("database.host");
+        var logLevelResult = randomFollower.Get("logging.level");
+        Console.WriteLine($"  database.host = {dbHostFollowerResult.Value} (from leader: {dbHostFollowerResult.IsFromLeader})");
+        Console.WriteLine($"  logging.level = {logLevelResult.Value} (from leader: {logLevelResult.IsFromLeader})");
 
         // 3. Update existing settings
         Console.WriteLine("\n3. Updating existing settings:");
@@ -92,17 +96,20 @@ class Program
 
         // 4. Check if settings exist
         Console.WriteLine("\n4. Checking if settings exist:");
+        var containsResult1 = randomFollower.Contains("database.host");
+        var containsResult2 = randomFollower.Contains("nonexistent.key");
         Console.WriteLine(
-            $"  Contains 'database.host': {randomFollower.Contains("database.host")}"
+            $"  Contains 'database.host': {containsResult1.Exists} (from leader: {containsResult1.IsFromLeader})"
         );
         Console.WriteLine(
-            $"  Contains 'nonexistent.key': {randomFollower.Contains("nonexistent.key")}"
+            $"  Contains 'nonexistent.key': {containsResult2.Exists} (from leader: {containsResult2.IsFromLeader})"
         );
 
         // 5. Get all settings
         Console.WriteLine("\n5. Getting all settings from a follower:");
-        var allSettings = randomFollower.GetAll();
-        foreach (var kvp in allSettings.OrderBy(x => x.Key))
+        var allSettingsResult = randomFollower.GetAll();
+        Console.WriteLine($"Settings read from {allSettingsResult.NodeId} (from leader: {allSettingsResult.IsFromLeader}):");
+        foreach (var kvp in allSettingsResult.Settings.OrderBy(x => x.Key))
         {
             Console.WriteLine($"  {kvp.Key} = {kvp.Value}");
         }
@@ -118,8 +125,9 @@ class Program
         Console.WriteLine("\n7. Verifying deletion across cluster:");
         foreach (var settings in settingsCluster.Take(3)) // Check first 3 nodes
         {
+            var existsResult = settings.Contains("feature.newUI");
             Console.WriteLine(
-                $"  {settings.NodeId} - feature.newUI exists: {settings.Contains("feature.newUI")}"
+                $"  {settings.NodeId} - feature.newUI exists: {existsResult.Exists} (from leader: {existsResult.IsFromLeader})"
             );
         }
 
@@ -134,11 +142,11 @@ class Program
         for (int i = 0; i < settingsCluster.Count; i++)
         {
             var settings = settingsCluster[i];
-            var nodeSettings = settings.GetAll();
+            var nodeSettingsResult = settings.GetAll();
             Console.WriteLine(
-                $"\n  {settings.NodeId} ({settings.State}) - {nodeSettings.Count} settings:"
+                $"\n  {settings.NodeId} ({settings.State}) - {nodeSettingsResult.Settings.Count} settings (from leader: {nodeSettingsResult.IsFromLeader}):"
             );
-            foreach (var kvp in nodeSettings.OrderBy(x => x.Key))
+            foreach (var kvp in nodeSettingsResult.Settings.OrderBy(x => x.Key))
             {
                 Console.WriteLine($"    {kvp.Key} = {kvp.Value}");
             }
@@ -146,12 +154,14 @@ class Program
 
         // 10. Demonstrate consistency
         Console.WriteLine("\n10. Verifying consistency across cluster:");
-        var leaderSettings = leader.GetAll();
+        var leaderSettingsResult = leader.GetAll();
+        var leaderSettings = leaderSettingsResult.Settings;
         bool allConsistent = true;
 
         foreach (var node in settingsCluster)
         {
-            var nodeSettings = node.GetAll();
+            var nodeSettingsResult = node.GetAll();
+            var nodeSettings = nodeSettingsResult.Settings;
             bool consistent =
                 leaderSettings.Count == nodeSettings.Count
                 && leaderSettings.All(kvp =>
@@ -159,7 +169,7 @@ class Program
                 );
 
             Console.WriteLine(
-                $"  {node.NodeId}: {(consistent ? "✓ Consistent" : "✗ Inconsistent")}"
+                $"  {node.NodeId}: {(consistent ? "✓ Consistent" : "✗ Inconsistent")} (from leader: {nodeSettingsResult.IsFromLeader})"
             );
             if (!consistent)
                 allConsistent = false;
