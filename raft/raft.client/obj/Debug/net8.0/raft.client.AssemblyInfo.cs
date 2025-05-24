@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("raft.client")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e19badd87dbd22d9c97a5ef69b7f1688a676eeea")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+126e073a0594cb08b01c3d59bc38591a5350d79e")]
 [assembly: System.Reflection.AssemblyProductAttribute("raft.client")]
 [assembly: System.Reflection.AssemblyTitleAttribute("raft.client")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
