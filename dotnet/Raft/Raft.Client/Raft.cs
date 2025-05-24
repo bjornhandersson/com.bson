@@ -273,9 +273,6 @@ public class Raft
         return new AppendEntriesResult { Term = CurrentTerm, Success = true };
     }
 
-    /// <summary>
-    /// Convert to follower state
-    /// </summary>
     private void ConvertToFollower(int term)
     {
         var oldState = State;
@@ -291,9 +288,6 @@ public class Raft
         }
     }
 
-    /// <summary>
-    /// Convert to candidate state and start election
-    /// </summary>
     private void ConvertToCandidate()
     {
         var oldState = State;
@@ -310,9 +304,6 @@ public class Raft
         _ = Task.Run(SendRequestVoteRPCs);
     }
 
-    /// <summary>
-    /// Convert to leader state
-    /// </summary>
     private void ConvertToLeader()
     {
         var oldState = State;
@@ -335,9 +326,6 @@ public class Raft
         _ = Task.Run(SendHeartbeats);
     }
 
-    /// <summary>
-    /// Set the current leader
-    /// </summary>
     private void SetCurrentLeader(string leaderId)
     {
         if (CurrentLeader != leaderId)
@@ -347,18 +335,12 @@ public class Raft
         }
     }
 
-    /// <summary>
-    /// Reset election timeout to a random value
-    /// </summary>
     private void ResetElectionTimeout()
     {
         var timeout = _random.Next(_minElectionTimeout, _maxElectionTimeout);
         _electionTimeout = DateTime.UtcNow.AddMilliseconds(timeout);
     }
 
-    /// <summary>
-    /// Main election timeout loop
-    /// </summary>
     private async Task ElectionTimeoutLoop()
     {
         while (true)
@@ -373,9 +355,6 @@ public class Raft
         }
     }
 
-    /// <summary>
-    /// Main heartbeat loop for leaders
-    /// </summary>
     private async Task HeartbeatLoop()
     {
         while (true)
@@ -389,9 +368,6 @@ public class Raft
         }
     }
 
-    /// <summary>
-    /// Send RequestVote RPCs to all other servers
-    /// </summary>
     private async Task SendRequestVoteRPCs()
     {
         var args = new RequestVoteArgs
@@ -410,9 +386,6 @@ public class Raft
         await Task.WhenAll(tasks);
     }
 
-    /// <summary>
-    /// Send RequestVote RPC to a specific server
-    /// </summary>
     private async Task SendRequestVoteRPC(string serverId, RequestVoteArgs args)
     {
         try
@@ -435,9 +408,6 @@ public class Raft
         }
     }
 
-    /// <summary>
-    /// Process RequestVote RPC result
-    /// </summary>
     private void ProcessRequestVoteResult(string serverId, RequestVoteResult result)
     {
         if (result.Term > CurrentTerm)
@@ -458,9 +428,6 @@ public class Raft
         }
     }
 
-    /// <summary>
-    /// Send heartbeats to all followers
-    /// </summary>
     private async Task SendHeartbeats()
     {
         if (State != ServerState.Leader)
@@ -474,9 +441,6 @@ public class Raft
         await Task.WhenAll(tasks);
     }
 
-    /// <summary>
-    /// Replicate log entries to followers
-    /// </summary>
     private async Task ReplicateToFollowers()
     {
         if (State != ServerState.Leader)
@@ -490,9 +454,6 @@ public class Raft
         await Task.WhenAll(tasks);
     }
 
-    /// <summary>
-    /// Send AppendEntries RPC to a specific server
-    /// </summary>
     private async Task SendAppendEntriesRPC(string serverId)
     {
         if (State != ServerState.Leader)
@@ -537,9 +498,6 @@ public class Raft
         }
     }
 
-    /// <summary>
-    /// Process AppendEntries RPC result
-    /// </summary>
     private void ProcessAppendEntriesResult(
         string serverId,
         AppendEntriesArgs args,
@@ -574,9 +532,6 @@ public class Raft
         }
     }
 
-    /// <summary>
-    /// Update commit index based on majority replication
-    /// </summary>
     private void UpdateCommitIndex()
     {
         if (State != ServerState.Leader)
@@ -599,9 +554,6 @@ public class Raft
         }
     }
 
-    /// <summary>
-    /// Apply committed entries to state machine
-    /// </summary>
     private void ApplyCommittedEntries()
     {
         while (LastApplied < CommitIndex)
@@ -615,9 +567,6 @@ public class Raft
         }
     }
 
-    /// <summary>
-    /// Check if candidate's log is at least as up-to-date as receiver's log
-    /// </summary>
     private bool IsLogUpToDate(int lastLogIndex, int lastLogTerm)
     {
         var ourLastLogTerm = Log.Count > 0 ? Log.Last().Term : 0;
@@ -658,17 +607,11 @@ public class Raft
 
     #region Testing Support - Internal Use Only
 
-    /// <summary>
-    /// Clear the cluster registry (for testing purposes)
-    /// </summary>
     internal void ClearClusterRegistry()
     {
         _clusterRegistry.Clear();
     }
 
-    /// <summary>
-    /// Manually trigger an election (for testing purposes)
-    /// </summary>
     internal void TriggerElection()
     {
         if (State != ServerState.Leader)
@@ -677,9 +620,6 @@ public class Raft
         }
     }
 
-    /// <summary>
-    /// Manually send RequestVote RPCs synchronously (for testing purposes)
-    /// </summary>
     internal void SendRequestVoteRPCsSync()
     {
         if (State != ServerState.Candidate)
