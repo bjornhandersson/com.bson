@@ -1,4 +1,4 @@
-# Raft Consensus Library
+ # Raft Consensus Library
 
 A clean, production-ready implementation of the Raft consensus algorithm for building distributed systems.
 

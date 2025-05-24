@@ -598,7 +598,7 @@ public class Raft
     /// <summary>
     /// Apply committed entries to state machine
     /// </summary>
-    internal void ApplyCommittedEntries()
+    private void ApplyCommittedEntries()
     {
         while (LastApplied < CommitIndex)
         {
