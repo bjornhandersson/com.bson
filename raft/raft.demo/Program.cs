@@ -191,11 +191,14 @@ class Program
     /// <summary>
     /// Wait for a leader to be elected in the cluster using events instead of arbitrary delays
     /// </summary>
-    private static async Task WaitForLeaderElection(List<DistributedSettings> cluster, int timeoutMs = 10000)
+    private static async Task WaitForLeaderElection(
+        List<DistributedSettings> cluster,
+        int timeoutMs = 10000
+    )
     {
         var tcs = new TaskCompletionSource<bool>();
         var cts = new CancellationTokenSource(timeoutMs);
-        
+
         // Cancel the task if timeout is reached
         cts.Token.Register(() => tcs.TrySetCanceled());
 
@@ -212,7 +215,10 @@ class Program
         foreach (var node in cluster)
         {
             // Access the internal Raft instance through reflection since it's private
-            var raftField = typeof(DistributedSettings).GetField("_raft", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var raftField = typeof(DistributedSettings).GetField(
+                "_raft",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             if (raftField?.GetValue(node) is Raft.Client.Raft raft)
             {
                 raft.LeaderChanged += OnLeaderChanged;
@@ -239,7 +245,11 @@ class Program
             // Unsubscribe from events
             foreach (var node in cluster)
             {
-                var raftField = typeof(DistributedSettings).GetField("_raft", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var raftField = typeof(DistributedSettings).GetField(
+                    "_raft",
+                    System.Reflection.BindingFlags.NonPublic
+                        | System.Reflection.BindingFlags.Instance
+                );
                 if (raftField?.GetValue(node) is Raft.Client.Raft raft)
                 {
                     raft.LeaderChanged -= OnLeaderChanged;
@@ -252,7 +262,10 @@ class Program
     /// <summary>
     /// Wait for log replication to complete across the cluster
     /// </summary>
-    private static async Task WaitForReplication(List<DistributedSettings> cluster, int timeoutMs = 2000)
+    private static async Task WaitForReplication(
+        List<DistributedSettings> cluster,
+        int timeoutMs = 2000
+    )
     {
         var leader = cluster.FirstOrDefault(s => s.State == ServerState.Leader);
         if (leader == null)
@@ -263,7 +276,10 @@ class Program
         }
 
         // Get the leader's current commit index
-        var raftField = typeof(DistributedSettings).GetField("_raft", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var raftField = typeof(DistributedSettings).GetField(
+            "_raft",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+        );
         if (!(raftField?.GetValue(leader) is Raft.Client.Raft leaderRaft))
         {
             await Task.Delay(100);
@@ -271,7 +287,7 @@ class Program
         }
 
         var targetCommitIndex = leaderRaft.CommitIndex;
-        
+
         // If no entries to replicate, just wait briefly
         if (targetCommitIndex == 0)
         {
@@ -281,7 +297,7 @@ class Program
 
         var tcs = new TaskCompletionSource<bool>();
         var cts = new CancellationTokenSource(timeoutMs);
-        
+
         // Cancel the task if timeout is reached
         cts.Token.Register(() => tcs.TrySetResult(true));
 

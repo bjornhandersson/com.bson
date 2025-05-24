@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("raft.demo")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f43371820c36573b3d74a964fb7f0dd55dc505ee")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e19badd87dbd22d9c97a5ef69b7f1688a676eeea")]
 [assembly: System.Reflection.AssemblyProductAttribute("raft.demo")]
 [assembly: System.Reflection.AssemblyTitleAttribute("raft.demo")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
