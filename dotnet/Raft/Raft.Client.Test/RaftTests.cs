@@ -19,11 +19,12 @@ public class RaftTests
     public void Setup()
     {
         _cluster = new List<Raft>();
+        var clusterRegistry = new Dictionary<string, Raft>();
 
-        // Create a 5-server cluster
+        // Create a 5-server cluster with shared registry
         foreach (var serverId in _serverIds)
         {
-            var raft = new Raft(serverId, _serverIds);
+            var raft = new Raft(serverId, _serverIds, clusterRegistry);
             _cluster.Add(raft);
         }
     }

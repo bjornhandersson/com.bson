@@ -44,9 +44,9 @@ public class Raft
     public string ServerId { get; private set; }
 
     /// <summary>
-    /// Static registry of all Raft instances for inter-node communication
+    /// Registry of all Raft instances for inter-node communication
     /// </summary>
-    private static readonly ConcurrentDictionary<string, Raft> _clusterRegistry = new();
+    private readonly Dictionary<string, Raft> _clusterRegistry;
 
     /// <summary>
     /// List of all servers in the cluster
@@ -95,10 +95,11 @@ public class Raft
     /// </summary>
     /// <param name="serverId">Unique identifier for this server</param>
     /// <param name="clusterMembers">List of all servers in the cluster</param>
-    public Raft(string serverId, List<string> clusterMembers)
+    public Raft(string serverId, List<string> clusterMembers, Dictionary<string, Raft>? clusterRegistry = null)
     {
         ServerId = serverId ?? throw new ArgumentNullException(nameof(serverId));
         ClusterMembers = clusterMembers ?? throw new ArgumentNullException(nameof(clusterMembers));
+        _clusterRegistry = clusterRegistry ?? new Dictionary<string, Raft>();
 
         if (!ClusterMembers.Contains(ServerId))
         {
@@ -656,7 +657,7 @@ public class Raft
     /// <summary>
     /// Clear the cluster registry (for testing purposes)
     /// </summary>
-    internal static void ClearClusterRegistry()
+    internal void ClearClusterRegistry()
     {
         _clusterRegistry.Clear();
     }

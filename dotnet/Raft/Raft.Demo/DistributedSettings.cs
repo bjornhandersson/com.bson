@@ -18,19 +18,16 @@ public class DistributedSettings
     public string? CurrentLeader =>
         string.IsNullOrEmpty(_raft.CurrentLeader) ? null : _raft.CurrentLeader;
 
-    public DistributedSettings(string nodeId, List<string> clusterNodes)
+    public DistributedSettings(string nodeId, List<string> clusterNodes, Dictionary<string, Client.Raft>? clusterRegistry = null)
     {
-        _raft = new Raft.Client.Raft(nodeId, clusterNodes);
+        _raft = new Raft.Client.Raft(nodeId, clusterNodes, clusterRegistry);
 
         // Subscribe to committed log entries to apply settings changes
         _raft.LogEntryCommitted += OnLogEntryCommitted;
 
         // Subscribe to state changes for logging
-        _raft.StateChanged += (oldState, newState) =>
-            Console.WriteLine($"[{NodeId}] State changed: {oldState} -> {newState}");
-
-        _raft.LeaderChanged += leaderId =>
-            Console.WriteLine($"[{NodeId}] Leader changed to: {leaderId ?? "None"}");
+        _raft.StateChanged += (oldState, newState) => { };
+        _raft.LeaderChanged += leaderId => { };
     }
 
     public void Start()
@@ -59,13 +56,11 @@ public class DistributedSettings
 
         if (success)
         {
-            Console.WriteLine($"[{NodeId}] Setting '{name}' = '{value}' submitted to cluster");
+            // Setting submitted successfully
         }
         else
         {
-            Console.WriteLine(
-                $"[{NodeId}] Failed to submit setting '{name}' - not the leader. Current leader: {CurrentLeader ?? "Unknown"}"
-            );
+            // Failed to submit - not the leader
         }
 
         return success;
@@ -84,8 +79,6 @@ public class DistributedSettings
         lock (_lock)
         {
             _settings.TryGetValue(name, out var value);
-            var readType = isLeader ? "leader read" : "follower read";
-            Console.WriteLine($"[{NodeId}] Get '{name}' = '{value ?? "null"}' ({readType})");
 
             return new SettingReadResult
             {
@@ -127,13 +120,11 @@ public class DistributedSettings
 
         if (success)
         {
-            Console.WriteLine($"[{NodeId}] Setting '{name}' deletion submitted to cluster");
+            // Deletion submitted successfully
         }
         else
         {
-            Console.WriteLine(
-                $"[{NodeId}] Failed to delete setting '{name}' - not the leader. Current leader: {CurrentLeader ?? "Unknown"}"
-            );
+            // Failed to delete - not the leader
         }
 
         return success;
@@ -149,10 +140,6 @@ public class DistributedSettings
         lock (_lock)
         {
             var settings = new Dictionary<string, string>(_settings);
-            var readType = isLeader ? "leader read" : "follower read";
-            Console.WriteLine(
-                $"[{NodeId}] GetAll() returned {settings.Count} settings ({readType})"
-            );
 
             return new SettingsReadResult
             {
@@ -195,8 +182,6 @@ public class DistributedSettings
         lock (_lock)
         {
             var exists = _settings.ContainsKey(name);
-            var readType = isLeader ? "leader read" : "follower read";
-            Console.WriteLine($"[{NodeId}] Contains '{name}' = {exists} ({readType})");
 
             return new SettingExistsResult
             {
@@ -249,27 +234,20 @@ public class DistributedSettings
                 {
                     case "SET":
                         _settings[command.Name] = command.Value;
-                        Console.WriteLine(
-                            $"[{NodeId}] Applied: SET '{command.Name}' = '{command.Value}' (Term: {entry.Term}, Index: {entry.Index})"
-                        );
                         break;
 
                     case "DELETE":
                         var removed = _settings.TryRemove(command.Name, out var oldValue);
-                        Console.WriteLine(
-                            $"[{NodeId}] Applied: DELETE '{command.Name}' (was: '{oldValue}', removed: {removed}) (Term: {entry.Term}, Index: {entry.Index})"
-                        );
                         break;
 
                     default:
-                        Console.WriteLine($"[{NodeId}] Unknown operation: {command.Operation}");
                         break;
                 }
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[{NodeId}] Error applying log entry: {ex.Message}");
+            // Error applying log entry - silently continue
         }
     }
 
