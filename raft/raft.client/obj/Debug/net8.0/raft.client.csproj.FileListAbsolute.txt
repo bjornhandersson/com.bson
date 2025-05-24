@@ -1,0 +1,12 @@
+/Users/bjornandersson/dev/com.bson/raft/raft.client/bin/Debug/net8.0/raft.client.deps.json
+/Users/bjornandersson/dev/com.bson/raft/raft.client/bin/Debug/net8.0/raft.client.dll
+/Users/bjornandersson/dev/com.bson/raft/raft.client/bin/Debug/net8.0/raft.client.pdb
+/Users/bjornandersson/dev/com.bson/raft/raft.client/obj/Debug/net8.0/raft.client.GeneratedMSBuildEditorConfig.editorconfig
+/Users/bjornandersson/dev/com.bson/raft/raft.client/obj/Debug/net8.0/raft.client.AssemblyInfoInputs.cache
+/Users/bjornandersson/dev/com.bson/raft/raft.client/obj/Debug/net8.0/raft.client.AssemblyInfo.cs
+/Users/bjornandersson/dev/com.bson/raft/raft.client/obj/Debug/net8.0/raft.client.csproj.CoreCompileInputs.cache
+/Users/bjornandersson/dev/com.bson/raft/raft.client/obj/Debug/net8.0/raft.client.sourcelink.json
+/Users/bjornandersson/dev/com.bson/raft/raft.client/obj/Debug/net8.0/raft.client.dll
+/Users/bjornandersson/dev/com.bson/raft/raft.client/obj/Debug/net8.0/refint/raft.client.dll
+/Users/bjornandersson/dev/com.bson/raft/raft.client/obj/Debug/net8.0/raft.client.pdb
+/Users/bjornandersson/dev/com.bson/raft/raft.client/obj/Debug/net8.0/ref/raft.client.dll
