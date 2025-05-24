@@ -22,6 +22,7 @@ class Program
         {
             var settings = new DistributedSettings(nodeId, nodeIds);
             settingsCluster.Add(settings);
+            
         }
 
         Console.WriteLine("\nStarting all nodes...");

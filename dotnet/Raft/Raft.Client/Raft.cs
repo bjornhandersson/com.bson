@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+﻿﻿using System.Collections.Concurrent;
 using System.Text.Json;
 
 namespace Raft.Client;
@@ -12,27 +12,21 @@ public class Raft
     /// <summary>
     /// Latest term server has seen (initialized to 0 on first boot, increases monotonically)
     /// </summary>
-    public int CurrentTerm { get; private set; } = 0;
-
-    /// <summary>
-    /// CandidateId that received vote in current term (empty string if none)
-    /// </summary>
-    public string VotedFor { get; private set; } = string.Empty;
-
-    /// <summary>
-    /// Log entries; each entry contains command for state machine, and term when entry was received by leader
-    /// </summary>
-    public List<LogEntry> Log { get; private set; } = new();
+    public int CurrentTerm { get; internal set; } = 0;
 
     /// <summary>
     /// Index of highest log entry known to be committed (initialized to 0, increases monotonically)
     /// </summary>
-    public int CommitIndex { get; private set; } = 0;
+    public int CommitIndex { get; internal set; } = 0;
 
     /// <summary>
     /// Index of highest log entry applied to state machine (initialized to 0, increases monotonically)
     /// </summary>
-    public int LastApplied { get; private set; } = 0;
+    public int LastApplied { get; internal set; } = 0;
+
+    // Internal state - not exposed to library users
+    internal string VotedFor { get; set; } = string.Empty;
+    internal List<LogEntry> Log { get; set; } = new();
 
     /// <summary>
     /// For each server, index of the next log entry to send to that server
@@ -62,7 +56,7 @@ public class Raft
     /// <summary>
     /// Current state of this server
     /// </summary>
-    public ServerState State { get; private set; } = ServerState.Follower;
+    public ServerState State { get; internal set; } = ServerState.Follower;
 
     /// <summary>
     /// Current leader ID (empty string if unknown)
@@ -166,7 +160,7 @@ public class Raft
     /// RequestVote RPC implementation
     /// Invoked by candidates to gather votes
     /// </summary>
-    public RequestVoteResult RequestVote(RequestVoteArgs args)
+    internal RequestVoteResult RequestVote(RequestVoteArgs args)
     {
         // Reply false if term < currentTerm
         if (args.Term < CurrentTerm)
@@ -199,7 +193,7 @@ public class Raft
     /// AppendEntries RPC implementation
     /// Invoked by leader to replicate log entries; also used as heartbeat
     /// </summary>
-    public AppendEntriesResult AppendEntries(AppendEntriesArgs args)
+    internal AppendEntriesResult AppendEntries(AppendEntriesArgs args)
     {
         // Reply false if term < currentTerm
         if (args.Term < CurrentTerm)
@@ -649,7 +643,6 @@ public class Raft
             ServerId,
             State = State.ToString(),
             CurrentTerm,
-            VotedFor,
             CurrentLeader,
             LogCount = Log.Count,
             CommitIndex,
@@ -658,10 +651,12 @@ public class Raft
         };
     }
 
+    #region Testing Support - Internal Use Only
+    
     /// <summary>
     /// Clear the cluster registry (for testing purposes)
     /// </summary>
-    public static void ClearClusterRegistry()
+    internal static void ClearClusterRegistry()
     {
         _clusterRegistry.Clear();
     }
@@ -669,7 +664,7 @@ public class Raft
     /// <summary>
     /// Manually trigger an election (for testing purposes)
     /// </summary>
-    public void TriggerElection()
+    internal void TriggerElection()
     {
         if (State != ServerState.Leader)
         {
@@ -680,7 +675,7 @@ public class Raft
     /// <summary>
     /// Manually send RequestVote RPCs synchronously (for testing purposes)
     /// </summary>
-    public void SendRequestVoteRPCsSync()
+    internal void SendRequestVoteRPCsSync()
     {
         if (State != ServerState.Candidate) return;
 
@@ -701,4 +696,6 @@ public class Raft
             }
         }
     }
+    
+    #endregion
 }

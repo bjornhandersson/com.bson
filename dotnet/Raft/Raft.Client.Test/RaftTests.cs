@@ -78,7 +78,7 @@ public class RaftTests
     {
         // Arrange
         var raft = _cluster[0];
-        raft.GetType().GetProperty("CurrentTerm")!.SetValue(raft, 5);
+        raft.CurrentTerm = 5;
 
         var args = new RequestVoteArgs
         {
@@ -178,7 +178,7 @@ public class RaftTests
     {
         // Arrange
         var raft = _cluster[0];
-        raft.GetType().GetProperty("CurrentTerm")!.SetValue(raft, 5);
+        raft.CurrentTerm = 5;
 
         var args = new AppendEntriesArgs
         {
@@ -254,8 +254,7 @@ public class RaftTests
         var raft = _cluster[0];
 
         // Add a log entry first
-        var log = (List<LogEntry>)raft.GetType().GetProperty("Log")!.GetValue(raft)!;
-        log.Add(
+        raft.Log.Add(
             new LogEntry
             {
                 Term = 1,
@@ -327,10 +326,9 @@ public class RaftTests
     {
         // Arrange
         var raft = _cluster[0];
-        var log = (List<LogEntry>)raft.GetType().GetProperty("Log")!.GetValue(raft)!;
 
-        // Add some existing entries
-        log.Add(
+        // Add some existing entries directly to the log (using internal access)
+        raft.Log.Add(
             new LogEntry
             {
                 Term = 1,
@@ -338,7 +336,7 @@ public class RaftTests
                 Command = "cmd1",
             }
         );
-        log.Add(
+        raft.Log.Add(
             new LogEntry
             {
                 Term = 1,
@@ -346,7 +344,7 @@ public class RaftTests
                 Command = "cmd2",
             }
         );
-        log.Add(
+        raft.Log.Add(
             new LogEntry
             {
                 Term = 2,
@@ -457,11 +455,8 @@ public class RaftTests
         var raft = _cluster[0];
 
         // Manually set as leader for testing
-        var stateField = raft.GetType().GetProperty("State")!;
-        stateField.SetValue(raft, ServerState.Leader);
-
-        var termField = raft.GetType().GetProperty("CurrentTerm")!;
-        termField.SetValue(raft, 1);
+        raft.State = ServerState.Leader;
+        raft.CurrentTerm = 1;
 
         // Act
         var result = raft.SubmitCommand("test-command");
@@ -486,17 +481,13 @@ public class RaftTests
         // Assert
         Assert.That(status, Is.Not.Null);
 
-        // Use reflection to check the anonymous object properties
-        var statusType = status.GetType();
-        var serverIdProp = statusType.GetProperty("ServerId");
-        var stateProp = statusType.GetProperty("State");
-        var termProp = statusType.GetProperty("CurrentTerm");
-        var clusterSizeProp = statusType.GetProperty("ClusterSize");
-
-        Assert.That(serverIdProp?.GetValue(status), Is.EqualTo("server1"));
-        Assert.That(stateProp?.GetValue(status), Is.EqualTo("Follower"));
-        Assert.That(termProp?.GetValue(status), Is.EqualTo(0));
-        Assert.That(clusterSizeProp?.GetValue(status), Is.EqualTo(5));
+        // Use dynamic to access the anonymous object properties
+        dynamic dynamicStatus = status;
+        
+        Assert.That(dynamicStatus.ServerId, Is.EqualTo("server1"));
+        Assert.That(dynamicStatus.State, Is.EqualTo("Follower"));
+        Assert.That(dynamicStatus.CurrentTerm, Is.EqualTo(0));
+        Assert.That(dynamicStatus.ClusterSize, Is.EqualTo(5));
     }
 
     [Test]
