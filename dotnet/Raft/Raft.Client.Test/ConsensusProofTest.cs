@@ -12,7 +12,11 @@ public class ConsensusProofTest
     private List<Raft> _cluster = new();
     private readonly List<string> _serverIds = new()
     {
-        "server1", "server2", "server3", "server4", "server5"
+        "server1",
+        "server2",
+        "server3",
+        "server4",
+        "server5",
     };
 
     [SetUp]
@@ -20,7 +24,7 @@ public class ConsensusProofTest
     {
         _cluster = new List<Raft>();
         var clusterRegistry = new Dictionary<string, Raft>();
-        
+
         foreach (var serverId in _serverIds)
         {
             var raft = new Raft(serverId, _serverIds, clusterRegistry);
@@ -36,12 +40,12 @@ public class ConsensusProofTest
 
     /// <summary>
     /// PROOF TEST: Does Raft actually provide consensus?
-    /// 
+    ///
     /// Scenario:
-    /// - Thread 1: Sets "name: anna" 
+    /// - Thread 1: Sets "name: anna"
     /// - Thread 2: Sets "name: agneta" (happens slightly before Thread 1)
     /// - Thread 3: Reads the value
-    /// 
+    ///
     /// Expected: Thread 3 should read "agneta" (the earlier operation)
     /// Reality: Let's see what actually happens...
     /// </summary>
@@ -81,20 +85,30 @@ public class ConsensusProofTest
         var tasks = new List<Task>();
 
         // Thread 2: Sets "name: agneta" (this should happen first)
-        tasks.Add(Task.Run(async () =>
-        {
-            await Task.Delay(10); // Slight delay to ensure this happens "before" Thread 1
-            var result = leader.SubmitCommand("name: agneta");
-            lock (lockObject) { results.Add(result); }
-        }));
+        tasks.Add(
+            Task.Run(async () =>
+            {
+                await Task.Delay(10); // Slight delay to ensure this happens "before" Thread 1
+                var result = leader.SubmitCommand("name: agneta");
+                lock (lockObject)
+                {
+                    results.Add(result);
+                }
+            })
+        );
 
         // Thread 1: Sets "name: anna" (this should happen second)
-        tasks.Add(Task.Run(async () =>
-        {
-            await Task.Delay(20); // Happens after Thread 2
-            var result = leader.SubmitCommand("name: anna");
-            lock (lockObject) { results.Add(result); }
-        }));
+        tasks.Add(
+            Task.Run(async () =>
+            {
+                await Task.Delay(20); // Happens after Thread 2
+                var result = leader.SubmitCommand("name: anna");
+                lock (lockObject)
+                {
+                    results.Add(result);
+                }
+            })
+        );
 
         // Wait for both operations to complete
         await Task.WhenAll(tasks);
@@ -116,8 +130,9 @@ public class ConsensusProofTest
         bool logsMatch = true;
         foreach (var kvp in finalLogs)
         {
-            if (kvp.Key == leader.ServerId) continue;
-            
+            if (kvp.Key == leader.ServerId)
+                continue;
+
             var serverLog = kvp.Value;
             if (serverLog.Count != leaderLog.Count)
             {
@@ -127,9 +142,11 @@ public class ConsensusProofTest
 
             for (int i = 0; i < leaderLog.Count; i++)
             {
-                if (leaderLog[i].Command != serverLog[i].Command || 
-                    leaderLog[i].Term != serverLog[i].Term ||
-                    leaderLog[i].Index != serverLog[i].Index)
+                if (
+                    leaderLog[i].Command != serverLog[i].Command
+                    || leaderLog[i].Term != serverLog[i].Term
+                    || leaderLog[i].Index != serverLog[i].Index
+                )
                 {
                     logsMatch = false;
                 }
@@ -143,9 +160,10 @@ public class ConsensusProofTest
         {
             var firstEntry = leaderLog[0];
             var secondEntry = leaderLog[1];
-            
+
             // Verify operation order - "agneta" should come first according to test design
-            bool correctOrder = firstEntry.Command == "name: agneta" && secondEntry.Command == "name: anna";
+            bool correctOrder =
+                firstEntry.Command == "name: agneta" && secondEntry.Command == "name: anna";
         }
 
         // 3. Final read value (what Thread 3 would see)
@@ -153,17 +171,19 @@ public class ConsensusProofTest
 
         // ASSERTIONS - The real test of consensus
         Assert.That(logsMatch, Is.True, "CONSENSUS FAILED: Servers have different logs");
-        
+
         if (leaderLog.Count > 0)
         {
             // All servers should see the same final value
             foreach (var kvp in finalLogs)
             {
                 var lastEntry = kvp.Value.LastOrDefault();
-                Assert.That(lastEntry?.Command, Is.EqualTo(finalValue), 
-                    $"Server {kvp.Key} has different final value: '{lastEntry?.Command}' vs expected '{finalValue}'");
+                Assert.That(
+                    lastEntry?.Command,
+                    Is.EqualTo(finalValue),
+                    $"Server {kvp.Key} has different final value: '{lastEntry?.Command}' vs expected '{finalValue}'"
+                );
             }
         }
-
     }
 }

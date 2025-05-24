@@ -22,7 +22,6 @@ class Program
         {
             var settings = new DistributedSettings(nodeId, nodeIds);
             settingsCluster.Add(settings);
-            
         }
 
         Console.WriteLine("\nStarting all nodes...");
@@ -79,14 +78,22 @@ class Program
         Console.WriteLine($"\nReading from leader ({leader.NodeId}):");
         var dbHostResult = leader.Get("database.host");
         var timeoutResult = leader.Get("api.timeout");
-        Console.WriteLine($"  database.host = {dbHostResult.Value} (from leader: {dbHostResult.IsFromLeader})");
-        Console.WriteLine($"  api.timeout = {timeoutResult.Value} (from leader: {timeoutResult.IsFromLeader})");
+        Console.WriteLine(
+            $"  database.host = {dbHostResult.Value} (from leader: {dbHostResult.IsFromLeader})"
+        );
+        Console.WriteLine(
+            $"  api.timeout = {timeoutResult.Value} (from leader: {timeoutResult.IsFromLeader})"
+        );
 
         Console.WriteLine($"\nReading from follower ({randomFollower.NodeId}):");
         var dbHostFollowerResult = randomFollower.Get("database.host");
         var logLevelResult = randomFollower.Get("logging.level");
-        Console.WriteLine($"  database.host = {dbHostFollowerResult.Value} (from leader: {dbHostFollowerResult.IsFromLeader})");
-        Console.WriteLine($"  logging.level = {logLevelResult.Value} (from leader: {logLevelResult.IsFromLeader})");
+        Console.WriteLine(
+            $"  database.host = {dbHostFollowerResult.Value} (from leader: {dbHostFollowerResult.IsFromLeader})"
+        );
+        Console.WriteLine(
+            $"  logging.level = {logLevelResult.Value} (from leader: {logLevelResult.IsFromLeader})"
+        );
 
         // 3. Update existing settings
         Console.WriteLine("\n3. Updating existing settings:");
@@ -109,7 +116,9 @@ class Program
         // 5. Get all settings
         Console.WriteLine("\n5. Getting all settings from a follower:");
         var allSettingsResult = randomFollower.GetAll();
-        Console.WriteLine($"Settings read from {allSettingsResult.NodeId} (from leader: {allSettingsResult.IsFromLeader}):");
+        Console.WriteLine(
+            $"Settings read from {allSettingsResult.NodeId} (from leader: {allSettingsResult.IsFromLeader}):"
+        );
         foreach (var kvp in allSettingsResult.Settings.OrderBy(x => x.Key))
         {
             Console.WriteLine($"  {kvp.Key} = {kvp.Value}");

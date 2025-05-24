@@ -484,7 +484,7 @@ public class RaftTests
 
         // Use dynamic to access the anonymous object properties
         dynamic dynamicStatus = status;
-        
+
         Assert.That(dynamicStatus.ServerId, Is.EqualTo("server1"));
         Assert.That(dynamicStatus.State, Is.EqualTo("Follower"));
         Assert.That(dynamicStatus.CurrentTerm, Is.EqualTo(0));

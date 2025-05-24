@@ -18,7 +18,11 @@ public class DistributedSettings
     public string? CurrentLeader =>
         string.IsNullOrEmpty(_raft.CurrentLeader) ? null : _raft.CurrentLeader;
 
-    public DistributedSettings(string nodeId, List<string> clusterNodes, Dictionary<string, Client.Raft>? clusterRegistry = null)
+    public DistributedSettings(
+        string nodeId,
+        List<string> clusterNodes,
+        Dictionary<string, Client.Raft>? clusterRegistry = null
+    )
     {
         _raft = new Raft.Client.Raft(nodeId, clusterNodes, clusterRegistry);
 

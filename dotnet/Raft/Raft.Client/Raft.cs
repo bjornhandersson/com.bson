@@ -1,4 +1,4 @@
-﻿﻿using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Text.Json;
 
 namespace Raft.Client;
@@ -95,7 +95,11 @@ public class Raft
     /// </summary>
     /// <param name="serverId">Unique identifier for this server</param>
     /// <param name="clusterMembers">List of all servers in the cluster</param>
-    public Raft(string serverId, List<string> clusterMembers, Dictionary<string, Raft>? clusterRegistry = null)
+    public Raft(
+        string serverId,
+        List<string> clusterMembers,
+        Dictionary<string, Raft>? clusterRegistry = null
+    )
     {
         ServerId = serverId ?? throw new ArgumentNullException(nameof(serverId));
         ClusterMembers = clusterMembers ?? throw new ArgumentNullException(nameof(clusterMembers));
@@ -420,7 +424,7 @@ public class Raft
             {
                 // Make actual RPC call to the target server
                 var result = targetServer.RequestVote(args);
-                
+
                 // Process the vote result
                 ProcessRequestVoteResult(serverId, result);
             }
@@ -653,7 +657,7 @@ public class Raft
     }
 
     #region Testing Support - Internal Use Only
-    
+
     /// <summary>
     /// Clear the cluster registry (for testing purposes)
     /// </summary>
@@ -678,7 +682,8 @@ public class Raft
     /// </summary>
     internal void SendRequestVoteRPCsSync()
     {
-        if (State != ServerState.Candidate) return;
+        if (State != ServerState.Candidate)
+            return;
 
         var args = new RequestVoteArgs
         {
@@ -697,6 +702,6 @@ public class Raft
             }
         }
     }
-    
+
     #endregion
 }
