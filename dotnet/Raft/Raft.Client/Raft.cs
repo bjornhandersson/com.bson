@@ -50,6 +50,11 @@ public class Raft
     public string ServerId { get; private set; }
 
     /// <summary>
+    /// Static registry of all Raft instances for inter-node communication
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, Raft> _clusterRegistry = new();
+
+    /// <summary>
     /// List of all servers in the cluster
     /// </summary>
     public List<string> ClusterMembers { get; private set; }
@@ -106,20 +111,27 @@ public class Raft
             throw new ArgumentException("Server ID must be included in cluster members");
         }
 
+        // Register this instance in the cluster registry for inter-node communication
+        _clusterRegistry.TryAdd(ServerId, this);
+
         ResetElectionTimeout();
     }
 
     /// <summary>
     /// Start the Raft server
     /// </summary>
-    public void Start()
+    /// <param name="enableBackgroundTasks">Whether to start background election and heartbeat tasks</param>
+    public void Start(bool enableBackgroundTasks = true)
     {
         // Initialize as follower
         ConvertToFollower(CurrentTerm);
 
-        // Start background tasks for election timeout and heartbeats
-        _ = Task.Run(ElectionTimeoutLoop);
-        _ = Task.Run(HeartbeatLoop);
+        if (enableBackgroundTasks)
+        {
+            // Start background tasks for election timeout and heartbeats
+            _ = Task.Run(ElectionTimeoutLoop);
+            _ = Task.Run(HeartbeatLoop);
+        }
     }
 
     /// <summary>
@@ -406,28 +418,28 @@ public class Raft
     {
         try
         {
-            // In a real implementation, this would be a network call
-            // For now, we'll simulate the RPC call
             await Task.Delay(1); // Simulate network delay
 
-            // TODO: Implement actual RPC call to remote server
-            // var result = await RemoteCall(serverId, "RequestVote", args);
-
-            // For simulation purposes, we'll assume the vote is granted
-            var result = new RequestVoteResult { Term = CurrentTerm, VoteGranted = true };
-
-            ProcessRequestVoteResult(result);
+            // Get the target server from the cluster registry
+            if (_clusterRegistry.TryGetValue(serverId, out var targetServer))
+            {
+                // Make actual RPC call to the target server
+                var result = targetServer.RequestVote(args);
+                
+                // Process the vote result
+                ProcessRequestVoteResult(serverId, result);
+            }
         }
         catch (Exception)
         {
-            // Handle RPC failure
+            // Handle RPC failure - server might be down
         }
     }
 
     /// <summary>
     /// Process RequestVote RPC result
     /// </summary>
-    private void ProcessRequestVoteResult(RequestVoteResult result)
+    private void ProcessRequestVoteResult(string serverId, RequestVoteResult result)
     {
         if (result.Term > CurrentTerm)
         {
@@ -437,7 +449,7 @@ public class Raft
 
         if (State == ServerState.Candidate && result.VoteGranted && result.Term == CurrentTerm)
         {
-            _votesReceived.Add($"vote_{_votesReceived.Count}"); // In real implementation, track actual server IDs
+            _votesReceived.Add(serverId); // Track actual server IDs
 
             // Check if we have majority votes
             if (_votesReceived.Count > ClusterMembers.Count / 2)
@@ -510,16 +522,15 @@ public class Raft
                 LeaderCommit = CommitIndex,
             };
 
-            // In a real implementation, this would be a network call
             await Task.Delay(1); // Simulate network delay
 
-            // TODO: Implement actual RPC call to remote server
-            // var result = await RemoteCall(serverId, "AppendEntries", args);
-
-            // For simulation purposes, we'll assume success
-            var result = new AppendEntriesResult { Term = CurrentTerm, Success = true };
-
-            ProcessAppendEntriesResult(serverId, args, result);
+            // Get the target server from the cluster registry
+            if (_clusterRegistry.TryGetValue(serverId, out var targetServer))
+            {
+                // Make actual RPC call to the target server
+                var result = targetServer.AppendEntries(args);
+                ProcessAppendEntriesResult(serverId, args, result);
+            }
         }
         catch (Exception)
         {
@@ -645,5 +656,49 @@ public class Raft
             LastApplied,
             ClusterSize = ClusterMembers.Count,
         };
+    }
+
+    /// <summary>
+    /// Clear the cluster registry (for testing purposes)
+    /// </summary>
+    public static void ClearClusterRegistry()
+    {
+        _clusterRegistry.Clear();
+    }
+
+    /// <summary>
+    /// Manually trigger an election (for testing purposes)
+    /// </summary>
+    public void TriggerElection()
+    {
+        if (State != ServerState.Leader)
+        {
+            ConvertToCandidate();
+        }
+    }
+
+    /// <summary>
+    /// Manually send RequestVote RPCs synchronously (for testing purposes)
+    /// </summary>
+    public void SendRequestVoteRPCsSync()
+    {
+        if (State != ServerState.Candidate) return;
+
+        var args = new RequestVoteArgs
+        {
+            Term = CurrentTerm,
+            CandidateId = ServerId,
+            LastLogIndex = Log.Count,
+            LastLogTerm = Log.Count > 0 ? Log.Last().Term : 0,
+        };
+
+        foreach (var serverId in ClusterMembers.Where(s => s != ServerId))
+        {
+            if (_clusterRegistry.TryGetValue(serverId, out var targetServer))
+            {
+                var result = targetServer.RequestVote(args);
+                ProcessRequestVoteResult(serverId, result);
+            }
+        }
     }
 }
