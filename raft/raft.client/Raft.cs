@@ -1,7 +1,7 @@
-﻿using System.Collections.Concurrent;
+﻿﻿using System.Collections.Concurrent;
 using System.Text.Json;
 
-namespace raft.client;
+namespace Raft.Client;
 
 /// <summary>
 /// Raft consensus algorithm implementation based on "In Search of an Understandable Consensus Algorithm"

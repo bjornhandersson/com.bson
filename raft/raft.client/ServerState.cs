@@ -1,4 +1,4 @@
-namespace raft.client;
+namespace Raft.Client;
 
 /// <summary>
 /// Server states as defined in the Raft algorithm

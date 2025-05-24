@@ -1,6 +1,6 @@
-using raft.client;
+using Raft.Client;
 
-namespace raft.client.test;
+namespace Raft.Client.Test;
 
 [TestFixture]
 public class RaftTests

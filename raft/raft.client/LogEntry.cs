@@ -1,4 +1,4 @@
-namespace raft.client;
+namespace Raft.Client;
 
 /// <summary>
 /// Immutable log entry structure containing command and term information

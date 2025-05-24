@@ -1,4 +1,4 @@
-namespace raft.client;
+namespace Raft.Client;
 
 /// <summary>
 /// Immutable AppendEntries RPC arguments
