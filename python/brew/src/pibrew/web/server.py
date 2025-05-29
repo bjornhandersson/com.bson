@@ -23,13 +23,15 @@ class BrewWebServer:
         globals()['_brew_controller'] = self.brew_controller
         
         urls = (
-            '/api/start', 'StartHandler',
-            '/api/stop', 'StopHandler',
-            '/api/status', 'StatusHandler',
-            '/api/target', 'TargetHandler',
-            '/api/pid', 'PIDHandler',
-            '/api/gpio/on', 'GPIOOnHandler',
-            '/api/gpio/off', 'GPIOOffHandler',
+            '/service/start', 'StartHandler',
+            '/service/stop', 'StopHandler',
+            '/service/getStatus', 'StatusHandler',
+            '/service/setTarget', 'TargetHandler',
+            '/service/getPID', 'PIDHandler',
+            '/service/setPID', 'PIDHandler',
+            '/service/on', 'GPIOOnHandler',
+            '/service/off', 'GPIOOffHandler',
+            '/service/call', 'CallHandler',
             '/(js|css|images|static)/(.*)', 'StaticHandler',
             '/', 'IndexHandler'
         )
@@ -223,10 +225,10 @@ class StaticHandler:
                 with open(static_path, 'r') as f:
                     return f.read()
             else:
-                # Fallback to original location for backward compatibility
-                fallback_path = os.path.join(media, file_req)
-                if os.path.exists(fallback_path):
-                    with open(fallback_path, 'r') as f:
+                # Try without media subdirectory for direct static files
+                direct_static_path = os.path.join(os.path.dirname(__file__), '..', 'static', file_req)
+                if os.path.exists(direct_static_path):
+                    with open(direct_static_path, 'r') as f:
                         return f.read()
                         
             web.ctx.status = '404 Not Found'
