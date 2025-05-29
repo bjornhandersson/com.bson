@@ -112,31 +112,3 @@ pibrew/
 ├── docs/                 # Documentation
 └── examples/             # Example configurations
 ```
-
-## Safety Notes
-
-⚠️ **Important Safety Information**
-
-- Always use appropriate electrical safety measures when working with heating elements
-- Ensure proper grounding and use GFCI protection
-- Never leave the system unattended during operation
-- Test all safety shutoffs before use
-- Follow local electrical codes and regulations
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support
-
-- Documentation: [https://pibrew.readthedocs.io](https://pibrew.readthedocs.io)
-- Issues: [https://github.com/pibrew/pibrew/issues](https://github.com/pibrew/pibrew/issues)
-- Discussions: [https://github.com/pibrew/pibrew/discussions](https://github.com/pibrew/pibrew/discussions)
