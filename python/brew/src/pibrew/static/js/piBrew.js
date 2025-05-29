@@ -3,20 +3,20 @@ piBrew = function() {
 }
 
 piBrew.prototype.run = function() {
-	$.getJSON('/service/call', function(data) {
+	$.getJSON('/api/status', function(data) {
 		// todo: model should not relay on view
-  		$('#response').html(data.temp + ' ' + data.unit);
+  		$('#response').html(data.temperature + ' °C');
 	});
 }
 
 piBrew.prototype.toggle = function(on, pin, callback) {
 	if(!on) {
-		$.getJSON('/service/off?pin=' + pin, function(data) {
+		$.getJSON('/api/gpio/off?pin=' + pin, function(data) {
 				callback(data);
 		});
 			
 	} else {
-		$.getJSON('/service/on?pin=' + pin, function(data) {
+		$.getJSON('/api/gpio/on?pin=' + pin, function(data) {
 			callback(data);
 		});
 	}
@@ -24,25 +24,25 @@ piBrew.prototype.toggle = function(on, pin, callback) {
 
 piBrew.prototype.startStop = function(start) {
 	if(start) {
-		return $.getJSON('/service/start');
+		return $.getJSON('/api/start');
 	}
 	else {
-		return $.getJSON('/service/stop');
+		return $.getJSON('/api/stop');
 	}
 }
 
 piBrew.prototype.setPID = function(KP, KI, KD) {
-	return $.getJSON('/service/setPID?KP=' + KP + '&KI=' + KI + '&KD=' + KD);
+	return $.getJSON('/api/pid?kp=' + KP + '&ki=' + KI + '&kd=' + KD);
 }
 
 piBrew.prototype.getPID = function() {
-	return $.getJSON('/service/getPID');
+	return $.getJSON('/api/pid');
 }
 
 piBrew.prototype.getStatus = function() {
-	return $.getJSON('/service/getStatus');
+	return $.getJSON('/api/status');
 }
 
 piBrew.prototype.setTarget = function(target) {
-	return $.getJSON('/service/setTarget?target=' + target);
+	return $.getJSON('/api/target?target=' + target);
 }

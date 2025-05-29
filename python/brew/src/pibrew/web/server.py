@@ -19,12 +19,12 @@ class BrewWebServer:
         
     def create_app(self):
         """Create and configure the web application."""
-        # Store controller reference for handlers
-        web.ctx.brew_controller = self.brew_controller
+        # Store controller reference globally for handlers
+        globals()['_brew_controller'] = self.brew_controller
         
         urls = (
             '/api/start', 'StartHandler',
-            '/api/stop', 'StopHandler', 
+            '/api/stop', 'StopHandler',
             '/api/status', 'StatusHandler',
             '/api/target', 'TargetHandler',
             '/api/pid', 'PIDHandler',
@@ -54,8 +54,8 @@ class BaseHandler:
     
     @property
     def brew_controller(self) -> BrewController:
-        """Get the brew controller from context."""
-        return web.ctx.brew_controller
+        """Get the brew controller from global reference."""
+        return globals()['_brew_controller']
     
     def json_response(self, data: dict) -> str:
         """Return JSON response with proper headers."""
@@ -164,7 +164,10 @@ class GPIOOnHandler(BaseHandler):
             
             pin = int(args.pin)
             # Direct GPIO control - use with caution
-            import RPi.GPIO as GPIO
+            try:
+                import RPi.GPIO as GPIO
+            except ImportError:
+                from ..hardware import gpio_mock as GPIO
             GPIO.output(pin, True)
             return self.json_response({'status': 'on', 'pin': pin})
         except Exception as e:
@@ -183,7 +186,10 @@ class GPIOOffHandler(BaseHandler):
             
             pin = int(args.pin)
             # Direct GPIO control - use with caution
-            import RPi.GPIO as GPIO
+            try:
+                import RPi.GPIO as GPIO
+            except ImportError:
+                from ..hardware import gpio_mock as GPIO
             GPIO.output(pin, False)
             return self.json_response({'status': 'off', 'pin': pin})
         except Exception as e:
