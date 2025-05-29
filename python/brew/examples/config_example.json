@@ -1,0 +1,32 @@
+{
+  "hardware": {
+    "gpio_pins": {
+      "heater_led": 15,
+      "heater_relay": 13,
+      "thermocouple_data": 21,
+      "thermocouple_clock": 23,
+      "thermocouple_cs": 26
+    },
+    "cycle_time": 2.0,
+    "min_toggle_time": 0.1
+  },
+  "pid": {
+    "kp": 5.0,
+    "ki": 0.007,
+    "kd": 1.0,
+    "integral_max": 1000,
+    "integral_min": -1000,
+    "output_max": 100,
+    "output_min": 0
+  },
+  "web_server": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "debug": false
+  },
+  "brewing": {
+    "default_target_temperature": 65.0,
+    "safety_max_temperature": 100.0,
+    "safety_timeout_minutes": 120
+  }
+}
