@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from __future__ import division
 import web
 import json
 import signal
@@ -14,8 +13,8 @@ class on:
             pin = int(web.input().pin)
             piBrew.GPIO_on(pin)
             return json.dumps({'status':'on'})
-        except:
-            print("ERROR")
+        except Exception as e:
+            print(f"ERROR: {e}")
             return json.dumps({'status': 'ERROR'})
         
 class off:
@@ -24,8 +23,8 @@ class off:
             pin = int(web.input().pin)
             piBrew.GPIO_off(pin)
             return json.dumps({'status':'off'})
-        except:
-            print("ERROR")
+        except Exception as e:
+            print(f"ERROR: {e}")
             return json.dumps({'status':'ERROR'})
         
 class start:
@@ -35,8 +34,8 @@ class start:
 
 class stop:
     def GET(self):
-        piBrew.stop()   
-        return json.dumps({'running': piBrew.isStarted == False})
+        piBrew.stop()
+        return json.dumps({'running': not piBrew.isStarted})
 
 class setPID:
     def GET(self):
@@ -65,23 +64,28 @@ class index:
     def GET(self):
         try:
             web.header('Content-type', 'text/html')
-            f = open('html/index.html', 'r', encoding='utf-8')
-            return f.read()
-        except:
+            with open('html/index.html', 'r', encoding='utf-8') as f:
+                return f.read()
+        except FileNotFoundError:
             return 'File not found'
+        except Exception as e:
+            return f'Error: {e}'
 
 class static:
     def GET(self, media, fileReq):
         try:
-            if(fileReq is None):
+            if fileReq is None:
                 fileReq = 'index.html'
             if media == 'js':
                 web.header('Content-type', 'text/javascript')
             else:
                 web.header('Content-type', 'text/html')
-            f = open(media + '/'+ fileReq, 'r', encoding='utf-8')
-            return f.read()
-        except:
+            with open(f'{media}/{fileReq}', 'r', encoding='utf-8') as f:
+                return f.read()
+        except FileNotFoundError:
+            return ''
+        except Exception as e:
+            print(f"Static file error: {e}")
             return ''
         
 def teardown(signal, frame):

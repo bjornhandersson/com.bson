@@ -53,7 +53,7 @@ class PID:
         if not self._dt:
             self._dt = time.time()
         
-        if(Ts is None):
+        if Ts is None:
             dt = time.time() - self._dt
         else:
             dt = Ts
@@ -63,14 +63,14 @@ class PID:
         # Calculate the integral
         self._integral = self._integral + (error * dt)
         # Upper limit
-        if(self._integral > self.I_max):
+        if self._integral > self.I_max:
             self._integral = self.I_max
         # Down limit
-        if(self._integral < self.I_min):
+        if self._integral < self.I_min:
             self._integral = self.I_min
             
         # Calculate the derivate
-        if(dt != 0):
+        if dt != 0:
             self._derivative = self.Kd * (error - self._error) / dt
         
         # Storing the error
@@ -80,9 +80,9 @@ class PID:
         PID = self.Kp * error + self.Ki * self._integral + self._derivative
         
         # Signal limitation
-        if(PID > self.U_max):
+        if PID > self.U_max:
             PID = self.U_max
-        if(PID < self.U_min):
+        if PID < self.U_min:
             PID = self.U_min
             
         return PID

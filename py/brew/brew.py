@@ -1,8 +1,6 @@
-from __future__ import division
 import pid
 import heater
 import max31855 as Thermocouple
-import _thread
 import threading
 import time
 
@@ -55,23 +53,25 @@ class Brew:
     
     def start(self):
         print('Start')
-        if(self.isStarted == False):
+        if not self.isStarted:
             self.isStarted = True
-            _thread.start_new_thread(self._worker, (self,))
+            self._worker_thread = threading.Thread(target=self._worker, args=(self,))
+            self._worker_thread.daemon = True
+            self._worker_thread.start()
     
     def stop(self):
         print('Stop')
-        if(self.isStarted == True):
+        if self.isStarted:
             self._evStop = threading.Event()
             self.isStarted = False
-            self._evStop.wait(None)
+            self._evStop.wait()
             
     def _worker(self, arg):
         try:
             print('Thread started')
             self._evStop = None
             ''' run the PID/Heater/temp cycle '''
-            while(self.isStarted == True):
+            while self.isStarted:
                 ''' get temperature '''
                 self.temp = self.thermocouple.readTempC()
                 
@@ -112,7 +112,7 @@ class Brew:
     ''' callback method from heater '''
     ''' this methods turns the heater relay and LED on / off '''
     def heatKettle(self, on):
-        if(on == True):
+        if on:
             self.GPIO_on(self.GPIO_HEATER_LED_PIN)
             self.GPIO_on(self.GPIO_HEATER_RELAY_PIN)
         else:
