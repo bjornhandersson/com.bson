@@ -2,7 +2,7 @@ from __future__ import division
 import pid
 import heater
 import max31855 as Thermocouple
-import thread
+import _thread
 import threading
 import time
 
@@ -54,13 +54,13 @@ class Brew:
         }
     
     def start(self):
-        print 'Start'
+        print('Start')
         if(self.isStarted == False):
             self.isStarted = True
-            thread.start_new(self._worker, (self,))
+            _thread.start_new_thread(self._worker, (self,))
     
     def stop(self):
-        print 'Stop'
+        print('Stop')
         if(self.isStarted == True):
             self._evStop = threading.Event()
             self.isStarted = False
@@ -68,7 +68,7 @@ class Brew:
             
     def _worker(self, arg):
         try:
-            print 'Thread started'
+            print('Thread started')
             self._evStop = None
             ''' run the PID/Heater/temp cycle '''
             while(self.isStarted == True):
@@ -78,7 +78,7 @@ class Brew:
                 ''' feed PID with the error. error = target - current temp '''
                 ''' PID outputs the power, the power is a value between 0 - 100% '''
                 effect = self.pid.run(self.targetTemp - self.getTemp())
-                print 'acc_I:{} acc_D:{}'.format(self.pid._integral, self.pid._derivative)
+                print('acc_I:{} acc_D:{}'.format(self.pid._integral, self.pid._derivative))
                 
                 ''' Set power to heater '''
                 self.heater.setPower(effect)
@@ -103,7 +103,7 @@ class Brew:
             #self.pid.reset()
             self.isStarted = False
             self._evStop.set()
-            print 'Stopped'
+            print('Stopped')
     
     ''' returns the temperature used in the last cycle '''
     def getTemp(self):

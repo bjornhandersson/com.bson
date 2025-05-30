@@ -15,7 +15,7 @@ class on:
             piBrew.GPIO_on(pin)
             return json.dumps({'status':'on'})
         except:
-            print "ERROR"
+            print("ERROR")
             return json.dumps({'status': 'ERROR'})
         
 class off:
@@ -25,7 +25,7 @@ class off:
             piBrew.GPIO_off(pin)
             return json.dumps({'status':'off'})
         except:
-            print "ERROR"
+            print("ERROR")
             return json.dumps({'status':'ERROR'})
         
 class start:
@@ -70,13 +70,13 @@ class static:
                 web.header('Content-type', 'text/javascript')
             else:
                 web.header('Content-type', 'text/html') 
-            f = open(media + '/'+ fileReq, 'r')
+            f = open(media + '/'+ fileReq, 'r', encoding='utf-8')
             return f.read()
         except:
             return ''
         
 def teardown(signal, frame):
-    print 'Exit'
+    print('Exit')
     piBrew.stop()
     #GPIO.cleanup() #wait for thread to exit
     sys.exit(0)

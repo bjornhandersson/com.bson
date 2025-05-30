@@ -126,11 +126,11 @@ if __name__ == "__main__":
     thermocouple = MAX31855(MISO, CLK, CH)
     while(True):
         try:
-            print "tc: {} and rj: {} err: {}".format(
+            print("tc: {} and rj: {} err: {}".format(
                 thermocouple.readTempC(), 
                 thermocouple.readTempInternal(),
                 thermocouple.error
-            )
+            ))
             time.sleep(.5)
         except KeyboardInterrupt:
             GPIO.cleanup()

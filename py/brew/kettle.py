@@ -1,5 +1,5 @@
 import time
-import thread
+import _thread
 
 class Kettle:
     def __init__(self):
@@ -17,14 +17,14 @@ class Kettle:
         self._isHeating = True
         if(self._isRunning == False):
             self._isRunning = True
-            thread.start_new(self._worker, (self,))
+            _thread.start_new_thread(self._worker, (self,))
             
     def cool(self):
         #self._loopCnt = 0
         self._isHeating = False
         if(self._isRunning == False):
             self._isRunning = True
-            thread.start_new(self._worker, (self,))
+            _thread.start_new_thread(self._worker, (self,))
                   
     def _worker(self, a):
         try:
@@ -42,5 +42,5 @@ class Kettle:
                         self.temp += (self._clk * self._coolPerSec) + (self._slowFactor * self._loopCnt)
                 time.sleep(self._clk)
         except:
-            print 'Kettle error'
+            print('Kettle error')
             return

@@ -1,18 +1,18 @@
 class Session:
     def __init__(self):
-        self.recipie
-        self.name
-        self.volume
-        self.comments
+        self.recipie = None
+        self.name = None
+        self.volume = None
+        self.comments = None
         
 class Recipie:
     def __init__(self):
-        self.name
+        self.name = None
         self.ingridients = dict({
             'barley': [''' type:amount '''],
             'hops': [''' type:amount ''']
         })
-        self.mashSchema
+        self.mashSchema = None
         
 class MashSchema:
     def __init__(self):
