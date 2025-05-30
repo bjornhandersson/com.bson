@@ -61,6 +61,15 @@ class setTarget:
     def GET(self):
         piBrew.setTarget(float(web.input().target))
     
+class index:
+    def GET(self):
+        try:
+            web.header('Content-type', 'text/html')
+            f = open('html/index.html', 'r', encoding='utf-8')
+            return f.read()
+        except:
+            return 'File not found'
+
 class static:
     def GET(self, media, fileReq):
         try:
@@ -69,7 +78,7 @@ class static:
             if media == 'js':
                 web.header('Content-type', 'text/javascript')
             else:
-                web.header('Content-type', 'text/html') 
+                web.header('Content-type', 'text/html')
             f = open(media + '/'+ fileReq, 'r', encoding='utf-8')
             return f.read()
         except:
@@ -96,7 +105,8 @@ if __name__ == "__main__":
             '/service/setTarget', 'setTarget',
             '/service/getStatus', 'getStatus',
             '/(js|js/float|css|images|html)/(.*)', 'static',
-            '/', 'static'
+            '/(html)/(.*)', 'static',
+            '/', 'index'
     )
     
     web.config.debug = False
