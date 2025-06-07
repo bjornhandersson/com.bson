@@ -3,14 +3,13 @@ TARGET = main_temperature
 
 # Source files
 MAIN_SOURCE = src/main.s
-MATH_SOURCE = math.s
 IO_SOURCE = src/io/output.s
 SYSTEM_SOURCE = src/system/exit.s
 SERIAL_SOURCE = src/io/serial.s
 HARDWARE_SOURCE = src/hardware/spi.s
 
 # Object files
-SOURCES = $(MAIN_SOURCE) $(MATH_SOURCE) $(IO_SOURCE) $(SYSTEM_SOURCE) $(SERIAL_SOURCE) $(HARDWARE_SOURCE)
+SOURCES = $(MAIN_SOURCE) $(IO_SOURCE) $(SYSTEM_SOURCE) $(SERIAL_SOURCE) $(HARDWARE_SOURCE)
 OBJECTS = $(SOURCES:.s=.o)
 
 # Default target
