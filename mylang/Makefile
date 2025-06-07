@@ -25,8 +25,8 @@ TEMP_OBJECTS = $(TEMP_SOURCES:.s=.o)
 MAIN_TEMP_SOURCES = $(MAIN_SOURCE) $(MATH_SOURCE) $(IO_SOURCE) $(SYSTEM_SOURCE) $(SERIAL_SOURCE) $(HARDWARE_SOURCE)
 MAIN_TEMP_OBJECTS = $(MAIN_TEMP_SOURCES:.s=.o)
 
-# Default target
-all: $(TARGET)
+# Default target - build temperature sensor
+all: $(MAIN_TEMP_TARGET)
 
 # Build the basic program
 $(TARGET): $(BASIC_OBJECTS)
@@ -50,8 +50,15 @@ both: $(TARGET) $(TEMP_TARGET)
 # Build all programs
 all-programs: $(TARGET) $(TEMP_TARGET) $(MAIN_TEMP_TARGET)
 
+# Run the temperature sensor program (default)
+run: $(MAIN_TEMP_TARGET)
+	@echo "Running temperature sensor with 100ms refresh rate"
+	@echo "Press Ctrl+C to stop"
+	./$(MAIN_TEMP_TARGET)
+	@echo "Exit code: $$?"
+
 # Run the basic program
-run: $(TARGET)
+run-basic: $(TARGET)
 	./$(TARGET)
 	@echo "Exit code: $$?"
 
@@ -114,4 +121,4 @@ arduino-help:
 	@echo "   make temperature_reader"
 	@echo "   make run-temp"
 
-.PHONY: all both all-programs run run-temp run-main-temp clean rebuild info arduino-help
+.PHONY: all both all-programs run run-basic run-temp run-main-temp clean rebuild info arduino-help

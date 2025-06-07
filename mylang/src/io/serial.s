@@ -154,30 +154,23 @@ read_temperature_from_arduino:
     beq temp_error
     
     // Parse real Arduino response here
-    // For now, return a default value
-    mov x0, 2350            // 23.50°C
+    // For now, use MAX31855 simulation
+    bl read_max31855
+    cmp x0, -1
+    beq temp_error
+    
+    // Convert from 0.01°C units to 0.01°C display format
     ldp x21, x22, [sp], #16
     ldp x19, x20, [sp], #16
     ret
 
 mock_temperature_read:
-    // Mock Arduino behavior with realistic temperature simulation
-    // Get a pseudo-random value for simulation
-    bl get_pseudo_random
-    mov x20, x0
+    // Mock Arduino behavior using proper MAX31855 simulation
+    bl read_max31855
+    cmp x0, -1
+    beq temp_error
     
-    // 15% chance of sensor error (simulate disconnected sensor)
-    and x21, x20, #0xF      // Get lower 4 bits (0-15)
-    cmp x21, #14            // If >= 14 (12.5% chance), simulate no sensor
-    bge temp_error
-    
-    // Generate realistic temperature reading (18-28°C range)
-    and x21, x20, #0x3F     // Get lower 6 bits (0-63)
-    mov x22, 1800           // Base temperature: 18.00°C
-    mov x0, 16              // Scale factor for 10°C range
-    mul x21, x21, x0        // Scale random value
-    add x0, x22, x21        // Final temperature (1800-2800 range)
-    
+    // x0 now contains validated temperature in 0.01°C units
     ldp x21, x22, [sp], #16
     ldp x19, x20, [sp], #16
     ret

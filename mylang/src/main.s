@@ -73,25 +73,36 @@ read_error:
 
 // Function: display_temperature
 // Purpose: Display temperature value in format XX.XC
-// Input: x20 = temperature * 100 (e.g., 2550 for 25.50°C)
+// Input: x20 = temperature in 0.01°C units (e.g., 2550 for 25.50°C)
 // Output: none
 display_temperature:
     stp x19, x20, [sp, #-16]!
     stp x21, x22, [sp, #-16]!
     
-    // Extract whole degrees
+    // Check for negative temperature
+    cmp x20, 0
+    bge positive_temp
+    
+    // Handle negative temperature
+    mov x0, '-'
+    bl store_in_buffer
+    bl print_buffer
+    neg x20, x20            // Make positive for display
+    
+positive_temp:
+    // Extract whole degrees (divide by 100)
     mov x1, 100
     udiv x0, x20, x1        // x0 = whole degrees
-    msub x21, x0, x1, x20   // x21 = remainder (fractional part)
+    msub x21, x0, x1, x20   // x21 = remainder (fractional part in 0.01°C)
     
     // Display tens digit of whole degrees
     mov x1, 10
     udiv x19, x0, x1        // x19 = tens digit
     msub x22, x19, x1, x0   // x22 = units digit
     
-    // Print tens digit (if non-zero)
-    cmp x19, 0
-    beq skip_tens
+    // Print tens digit (if non-zero or temperature >= 10)
+    cmp x0, 10
+    blt skip_tens
     mov x0, x19
     bl convert_to_ascii
     bl store_in_buffer
@@ -109,7 +120,7 @@ skip_tens:
     bl store_in_buffer
     bl print_buffer
     
-    // Print fractional part (tenths)
+    // Print fractional part (two decimal places)
     mov x1, 10
     udiv x0, x21, x1        // Get tens digit of fractional part
     bl convert_to_ascii
