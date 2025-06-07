@@ -142,7 +142,7 @@ read_temperature_from_arduino:
     
     // Check if this is a mock or real connection
     cmp x19, 99
-    beq mock_temperature_read
+    beq mock_sensor_read
     
     // Real Arduino connection
     mov x0, x19
@@ -154,23 +154,19 @@ read_temperature_from_arduino:
     beq temp_error
     
     // Parse real Arduino response here
-    // For now, use MAX31855 simulation
-    bl read_max31855
-    cmp x0, -1
-    beq temp_error
+    // For now, use MAX31855 raw data simulation
+    bl generate_max31855_data
     
-    // Convert from 0.01°C units to 0.01°C display format
+    // Return raw data without validation (for hex display)
     ldp x21, x22, [sp], #16
     ldp x19, x20, [sp], #16
     ret
 
-mock_temperature_read:
-    // Mock Arduino behavior using proper MAX31855 simulation
-    bl read_max31855
-    cmp x0, -1
-    beq temp_error
+mock_sensor_read:
+    // Mock Arduino behavior - return raw MAX31855 data
+    bl generate_max31855_data
     
-    // x0 now contains validated temperature in 0.01°C units
+    // x0 now contains raw 32-bit MAX31855 data
     ldp x21, x22, [sp], #16
     ldp x19, x20, [sp], #16
     ret

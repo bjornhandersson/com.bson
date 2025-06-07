@@ -2,7 +2,7 @@
 .global _main
 
 .data
-error_msg: .ascii "ERR404"
+error_msg: .ascii "ERR_NO_SNR"
 temp_unit: .ascii "C"
 decimal_point: .ascii "."
 
@@ -24,20 +24,20 @@ temperature_loop:
     cmp x0, -1
     beq read_error
     
-    // Temperature reading successful
-    mov x20, x0             // Save temperature (scaled by 100)
+    // Raw sensor data reading successful
+    mov x20, x0             // Save raw hex data
     
     // Close serial connection
     mov x0, x19
     bl close_serial
     
-    // Display temperature
-    bl display_temperature
+    // Display raw hex data
+    bl display_hex_data
     
-    // Wait 100ms before next reading
-    mov x0, #100
+    // Wait 1 second before next reading
+    mov x0, #1000
     mov x1, #1000
-    mul x0, x0, x1          // x0 = 100 * 1000 = 100000 microseconds
+    mul x0, x0, x1          // x0 = 1000 * 1000 = 1000000 microseconds (1 second)
     bl microsleep
     
     // Continue loop
@@ -47,10 +47,10 @@ sensor_error:
     // No sensor connected - display ERR404
     bl display_error
     
-    // Wait 100ms before retry
-    mov x0, #100
+    // Wait 1 second before retry
+    mov x0, #1000
     mov x1, #1000
-    mul x0, x0, x1          // x0 = 100 * 1000 = 100000 microseconds
+    mul x0, x0, x1          // x0 = 1000 * 1000 = 1000000 microseconds (1 second)
     bl microsleep
     
     // Continue loop
@@ -62,83 +62,62 @@ read_error:
     bl close_serial
     bl display_error
     
-    // Wait 100ms before retry
-    mov x0, #100
+    // Wait 1 second before retry
+    mov x0, #1000
     mov x1, #1000
-    mul x0, x0, x1          // x0 = 100 * 1000 = 100000 microseconds
+    mul x0, x0, x1          // x0 = 1000 * 1000 = 1000000 microseconds (1 second)
     bl microsleep
     
     // Continue loop
     b temperature_loop
 
-// Function: display_temperature
-// Purpose: Display temperature value in format XX.XC
-// Input: x20 = temperature in 0.01°C units (e.g., 2550 for 25.50°C)
+// Function: display_hex_data
+// Purpose: Display raw sensor data in hexadecimal format
+// Input: x20 = raw 32-bit sensor data
 // Output: none
-display_temperature:
+display_hex_data:
     stp x19, x20, [sp, #-16]!
     stp x21, x22, [sp, #-16]!
     
-    // Check for negative temperature
-    cmp x20, 0
-    bge positive_temp
-    
-    // Handle negative temperature
-    mov x0, '-'
+    // Print "0x" prefix
+    mov x0, '0'
     bl store_in_buffer
     bl print_buffer
-    neg x20, x20            // Make positive for display
-    
-positive_temp:
-    // Extract whole degrees (divide by 100)
-    mov x1, 100
-    udiv x0, x20, x1        // x0 = whole degrees
-    msub x21, x0, x1, x20   // x21 = remainder (fractional part in 0.01°C)
-    
-    // Display tens digit of whole degrees
-    mov x1, 10
-    udiv x19, x0, x1        // x19 = tens digit
-    msub x22, x19, x1, x0   // x22 = units digit
-    
-    // Print tens digit (if non-zero or temperature >= 10)
-    cmp x0, 10
-    blt skip_tens
-    mov x0, x19
-    bl convert_to_ascii
-    bl store_in_buffer
-    bl print_buffer
-
-skip_tens:
-    // Print units digit
-    mov x0, x22
-    bl convert_to_ascii
+    mov x0, 'x'
     bl store_in_buffer
     bl print_buffer
     
-    // Print decimal point
-    mov x0, '.'
+    // Print 8 hex digits (32 bits)
+    mov x21, #8             // Counter for 8 hex digits
+    mov x19, #28            // Start with bit position 28 (highest nibble)
+    
+hex_loop:
+    // Extract 4 bits (one hex digit)
+    lsr x22, x20, x19       // Shift right to get the nibble
+    and x22, x22, #0xF      // Mask to 4 bits
+    
+    // Convert to hex character
+    cmp x22, #10
+    blt hex_digit
+    
+    // A-F (10-15)
+    sub x0, x22, #10
+    add x0, x0, 'A'
+    b print_hex_char
+    
+hex_digit:
+    // 0-9
+    add x0, x22, '0'
+    
+print_hex_char:
     bl store_in_buffer
     bl print_buffer
     
-    // Print fractional part (two decimal places)
-    mov x1, 10
-    udiv x0, x21, x1        // Get tens digit of fractional part
-    bl convert_to_ascii
-    bl store_in_buffer
-    bl print_buffer
-    
-    // Print units of fractional part
-    mov x1, 10
-    udiv x19, x21, x1       // x19 = tens digit
-    msub x0, x19, x1, x21   // x0 = units digit
-    bl convert_to_ascii
-    bl store_in_buffer
-    bl print_buffer
-    
-    // Print temperature unit
-    mov x0, 'C'
-    bl store_in_buffer
-    bl print_buffer
+    // Move to next nibble
+    sub x19, x19, #4        // Move to next 4 bits
+    sub x21, x21, #1        // Decrement counter
+    cmp x21, #0
+    bne hex_loop
     
     // Print newline
     bl print_newline
@@ -148,7 +127,7 @@ skip_tens:
     ret
 
 // Function: display_error
-// Purpose: Display ERR404 message
+// Purpose: Display ERR_NO_SNR message
 // Input: none
 // Output: none
 display_error:
@@ -169,18 +148,38 @@ display_error:
     bl store_in_buffer
     bl print_buffer
     
-    // Print 4
-    mov x0, '4'
+    // Print _
+    mov x0, '_'
     bl store_in_buffer
     bl print_buffer
     
-    // Print 0
-    mov x0, '0'
+    // Print N
+    mov x0, 'N'
     bl store_in_buffer
     bl print_buffer
     
-    // Print 4
-    mov x0, '4'
+    // Print O
+    mov x0, 'O'
+    bl store_in_buffer
+    bl print_buffer
+    
+    // Print _
+    mov x0, '_'
+    bl store_in_buffer
+    bl print_buffer
+    
+    // Print S
+    mov x0, 'S'
+    bl store_in_buffer
+    bl print_buffer
+    
+    // Print N
+    mov x0, 'N'
+    bl store_in_buffer
+    bl print_buffer
+    
+    // Print R
+    mov x0, 'R'
     bl store_in_buffer
     bl print_buffer
     
