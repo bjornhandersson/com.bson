@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -47,48 +48,88 @@ namespace bson.Dispatcher.Test
             // Arrange
             int partitions = 2;
             int taskCompleted = 0;
+            var tasksStarted = new TaskCompletionSource<bool>();
             var completed = new TaskCompletionSource<bool>();
+            var enqueueBlocked = new TaskCompletionSource<bool>();
+            
             using IAsyncDispatcher dispatcher = new AsyncDispatcher(
                 new DispatcherOptions { Partitions = partitions, MaxCapacity = 1 }
             );
 
-            // Act
-            var result = new int[partitions];
+            // Act - Enqueue tasks to fill both partitions to capacity
+            var enqueueTasks = new List<Task>();
             for (int i = 0; i < 4; i++)
             {
                 int partition = i % partitions;
-                await dispatcher.EnqueueAsync(
+                var enqueueTask = dispatcher.EnqueueAsync(
                     partition,
                     async (_) =>
                     {
-                        Interlocked.Increment(ref taskCompleted);
+                        // Signal that this task has started execution
+                        if (Interlocked.Increment(ref taskCompleted) == 2)
+                        {
+                            // First 2 tasks (one per partition) have started
+                            tasksStarted.SetResult(true);
+                        }
                         await completed.Task;
                     }
-                );
+                ).AsTask();
+                enqueueTasks.Add(enqueueTask);
             }
 
-            // Enqueue a task that will timeout
-            var enqueueTask = dispatcher.EnqueueAsync(
-                partition: 0,
-                async (_) =>
+            // Wait for the first 2 tasks to start (one per partition)
+            // This ensures both partitions are occupied and the remaining 2 tasks are queued
+            await tasksStarted.Task;
+
+            // Start the 5th enqueue operation on a background task
+            // This should block due to back pressure
+            var blockedEnqueueTask = Task.Run(async () =>
+            {
+                try
                 {
-                    taskCompleted++;
-                    await completed.Task;
+                    await dispatcher.EnqueueAsync(
+                        partition: 0,
+                        async (_) =>
+                        {
+                            Interlocked.Increment(ref taskCompleted);
+                            await completed.Task;
+                        }
+                    );
+                    return true; // Enqueue succeeded
                 }
-            );
+                catch
+                {
+                    return false; // Enqueue failed
+                }
+            });
 
-            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(1));
-            var completedTask = await Task.WhenAny(enqueueTask.AsTask(), timeoutTask);
+            // Signal that we've started the blocked enqueue attempt
+            _ = Task.Run(async () =>
+            {
+                await Task.Yield(); // Let the enqueue attempt start
+                enqueueBlocked.SetResult(true);
+            });
 
-            // Assert
-            completedTask.Should().Be(timeoutTask, because: "Expected timeout");
-            enqueueTask.IsCompleted.Should().BeFalse(because: "Task should have timed out");
+            await enqueueBlocked.Task;
 
-            // Free up the dispatcher
+            // Assert - The enqueue should be blocked (not completed)
+            blockedEnqueueTask.IsCompleted.Should().BeFalse(because: "Task should be blocked by back pressure");
+
+            // Verify that only 2 tasks have started execution (the others are queued)
+            taskCompleted.Should().Be(2, because: "Only 2 tasks should have started (one per partition)");
+
+            // Free up the dispatcher by completing all waiting tasks
             completed.SetResult(true);
-            await completedTask;
+            
+            // Wait for all enqueue operations to complete
+            await Task.WhenAll(enqueueTasks);
+            var enqueueResult = await blockedEnqueueTask;
+            
+            // Assert the blocked enqueue eventually succeeded
+            enqueueResult.Should().BeTrue(because: "Enqueue should succeed after capacity is freed");
 
-            taskCompleted.Should().Be(5);
+            // Verify all tasks eventually completed
+            taskCompleted.Should().Be(5, because: "All 5 tasks should complete after releasing the block");
         }
 
         [Test]
