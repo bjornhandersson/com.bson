@@ -26,10 +26,7 @@ public class DistributedSettings
     {
         _raft = new Raft.Client.Raft(nodeId, clusterNodes, clusterRegistry);
 
-        // Subscribe to committed log entries to apply settings changes
         _raft.LogEntryCommitted += OnLogEntryCommitted;
-
-        // Subscribe to state changes for logging
         _raft.StateChanged += (oldState, newState) => { };
         _raft.LeaderChanged += leaderId => { };
     }
@@ -58,14 +55,8 @@ public class DistributedSettings
 
         var success = _raft.SubmitCommand(command);
 
-        if (success)
-        {
-            // Setting submitted successfully
-        }
-        else
-        {
-            // Failed to submit - not the leader
-        }
+        if (success) { }
+        else { }
 
         return success;
     }
@@ -122,14 +113,8 @@ public class DistributedSettings
 
         var success = _raft.SubmitCommand(command);
 
-        if (success)
-        {
-            // Deletion submitted successfully
-        }
-        else
-        {
-            // Failed to delete - not the leader
-        }
+        if (success) { }
+        else { }
 
         return success;
     }
@@ -249,10 +234,7 @@ public class DistributedSettings
                 }
             }
         }
-        catch (Exception ex)
-        {
-            // Error applying log entry - silently continue
-        }
+        catch (Exception ex) { }
     }
 
     private record SettingCommand

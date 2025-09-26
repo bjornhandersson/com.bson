@@ -48,8 +48,6 @@ public class RaftSpecificationTests
         _cluster.Clear();
     }
 
-    #region Safety Property 1: Election Safety
-
     /// <summary>
     /// Election Safety: At most one leader can be elected in a given term (§5.2)
     /// This test verifies that in any given term, there can be at most one leader.
@@ -148,10 +146,6 @@ public class RaftSpecificationTests
         );
     }
 
-    #endregion
-
-    #region Safety Property 2: Leader Append-Only
-
     /// <summary>
     /// Leader Append-Only: A leader never overwrites or deletes entries in its log (§5.3)
     /// </summary>
@@ -223,10 +217,6 @@ public class RaftSpecificationTests
             );
         }
     }
-
-    #endregion
-
-    #region Safety Property 3: Log Matching
 
     /// <summary>
     /// Log Matching: If two logs contain an entry with the same index and term,
@@ -392,10 +382,6 @@ public class RaftSpecificationTests
         );
     }
 
-    #endregion
-
-    #region Safety Property 4: Leader Completeness
-
     /// <summary>
     /// Leader Completeness: If a log entry is committed in a given term, then that entry
     /// will be present in the logs of the leaders for all higher-numbered terms (§5.4)
@@ -497,10 +483,6 @@ public class RaftSpecificationTests
         );
     }
 
-    #endregion
-
-    #region Safety Property 5: State Machine Safety
-
     /// <summary>
     /// State Machine Safety: If a server has applied a log entry at a given index to its
     /// state machine, no other server will ever apply a different log entry for the same index (§5.4.3)
@@ -583,10 +565,6 @@ public class RaftSpecificationTests
         Assert.That(server1.CommitIndex, Is.EqualTo(1), "Server1 should have committed the entry");
         Assert.That(server2.CommitIndex, Is.EqualTo(1), "Server2 should have committed the entry");
     }
-
-    #endregion
-
-    #region Core Algorithm Properties (§5.1, §5.2)
 
     /// <summary>
     /// Test that servers only transition to candidate when election timeout elapses
@@ -683,10 +661,6 @@ public class RaftSpecificationTests
         );
     }
 
-    #endregion
-
-    #region Helper Methods
-
     private void SetPrivateProperty<T>(object obj, string propertyName, T value)
     {
         var property = obj.GetType()
@@ -730,6 +704,4 @@ public class RaftSpecificationTests
             );
         method?.Invoke(obj, parameters);
     }
-
-    #endregion
 }

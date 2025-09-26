@@ -110,7 +110,6 @@ public class Raft
             throw new ArgumentException("Server ID must be included in cluster members");
         }
 
-        // Register this instance in the cluster registry for inter-node communication
         _clusterRegistry.TryAdd(ServerId, this);
 
         ResetElectionTimeout();
@@ -122,12 +121,10 @@ public class Raft
     /// <param name="enableBackgroundTasks">Whether to start background election and heartbeat tasks</param>
     public void Start(bool enableBackgroundTasks = true)
     {
-        // Initialize as follower
         ConvertToFollower(CurrentTerm);
 
         if (enableBackgroundTasks)
         {
-            // Start background tasks for election timeout and heartbeats
             _ = Task.Run(ElectionTimeoutLoop);
             _ = Task.Run(HeartbeatLoop);
         }
@@ -155,7 +152,6 @@ public class Raft
 
         Log.Add(logEntry);
 
-        // Immediately try to replicate to followers
         _ = Task.Run(() => ReplicateToFollowers());
 
         return true;
@@ -605,8 +601,6 @@ public class Raft
         };
     }
 
-    #region Testing Support - Internal Use Only
-
     internal void ClearClusterRegistry()
     {
         _clusterRegistry.Clear();
@@ -642,6 +636,4 @@ public class Raft
             }
         }
     }
-
-    #endregion
 }

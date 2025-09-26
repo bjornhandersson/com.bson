@@ -66,7 +66,7 @@ namespace bson.Dispatcher.Test
                     }
                 );
             }
-            
+
             // Enqueue a task that will timeout
             var enqueueTask = dispatcher.EnqueueAsync(
                 partition: 0,
@@ -87,7 +87,7 @@ namespace bson.Dispatcher.Test
             // Free up the dispatcher
             completed.SetResult(true);
             await completedTask;
-            
+
             taskCompleted.Should().Be(5);
         }
 

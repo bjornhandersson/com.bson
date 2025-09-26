@@ -13,7 +13,6 @@ class Program
         Console.WriteLine("Showcasing how services can use Raft for settings synchronization");
         Console.WriteLine();
 
-        // Create a 5-node cluster for distributed settings
         var nodeIds = new List<string> { "node1", "node2", "node3", "node4", "node5" };
         var settingsCluster = new List<DistributedSettings>();
 
@@ -30,11 +29,9 @@ class Program
             settings.Start();
         }
 
-        // Wait for cluster to stabilize and elect a leader
         Console.WriteLine("\nWaiting for leader election...");
         await WaitForLeaderElection(settingsCluster);
 
-        // Find the current leader
         var leader = settingsCluster.FirstOrDefault(s => s.State == ServerState.Leader);
         var followers = settingsCluster.Where(s => s.State == ServerState.Follower).ToList();
 
@@ -57,10 +54,8 @@ class Program
         Console.WriteLine($"\nUsing {leader.NodeId} as the leader for settings operations");
         Console.WriteLine();
 
-        // Demonstrate CRUD operations
         Console.WriteLine("=== Demonstrating Settings CRUD Operations ===");
 
-        // 1. Add settings
         Console.WriteLine("\n1. Adding settings to the cluster:");
         leader.Add("database.host", "localhost");
         leader.Add("database.port", "5432");
@@ -68,10 +63,8 @@ class Program
         leader.Add("logging.level", "INFO");
         leader.Add("feature.newUI", "true");
 
-        // Wait for replication
         await WaitForReplication(settingsCluster);
 
-        // 2. Read settings from different nodes
         Console.WriteLine("\n2. Reading settings from different nodes:");
         var randomFollower = followers.FirstOrDefault() ?? settingsCluster[1];
 
@@ -95,14 +88,12 @@ class Program
             $"  logging.level = {logLevelResult.Value} (from leader: {logLevelResult.IsFromLeader})"
         );
 
-        // 3. Update existing settings
         Console.WriteLine("\n3. Updating existing settings:");
         leader.Add("logging.level", "DEBUG"); // Update existing
         leader.Add("database.port", "5433"); // Update existing
 
         await WaitForReplication(settingsCluster);
 
-        // 4. Check if settings exist
         Console.WriteLine("\n4. Checking if settings exist:");
         var containsResult1 = randomFollower.Contains("database.host");
         var containsResult2 = randomFollower.Contains("nonexistent.key");
@@ -113,7 +104,6 @@ class Program
             $"  Contains 'nonexistent.key': {containsResult2.Exists} (from leader: {containsResult2.IsFromLeader})"
         );
 
-        // 5. Get all settings
         Console.WriteLine("\n5. Getting all settings from a follower:");
         var allSettingsResult = randomFollower.GetAll();
         Console.WriteLine(
@@ -124,14 +114,12 @@ class Program
             Console.WriteLine($"  {kvp.Key} = {kvp.Value}");
         }
 
-        // 6. Delete settings
         Console.WriteLine("\n6. Deleting settings:");
         leader.Delete("feature.newUI");
         leader.Delete("nonexistent.key"); // Try to delete non-existent key
 
         await WaitForReplication(settingsCluster);
 
-        // 7. Verify deletion across cluster
         Console.WriteLine("\n7. Verifying deletion across cluster:");
         foreach (var settings in settingsCluster.Take(3)) // Check first 3 nodes
         {
@@ -141,13 +129,11 @@ class Program
             );
         }
 
-        // 8. Try operations from a follower (should fail)
         Console.WriteLine("\n8. Attempting operations from a follower (should fail):");
         var follower = followers.FirstOrDefault() ?? settingsCluster[1];
         follower.Add("test.key", "test.value");
         follower.Delete("database.host");
 
-        // 9. Final state of all nodes
         Console.WriteLine("\n9. Final settings state across all nodes:");
         for (int i = 0; i < settingsCluster.Count; i++)
         {
@@ -162,7 +148,6 @@ class Program
             }
         }
 
-        // 10. Demonstrate consistency
         Console.WriteLine("\n10. Verifying consistency across cluster:");
         var leaderSettingsResult = leader.GetAll();
         var leaderSettings = leaderSettingsResult.Settings;
@@ -219,10 +204,7 @@ class Program
         var tcs = new TaskCompletionSource<bool>();
         var cts = new CancellationTokenSource(timeoutMs);
 
-        // Cancel the task if timeout is reached
         cts.Token.Register(() => tcs.TrySetCanceled());
-
-        // Subscribe to leader change events from any node
         void OnLeaderChanged(string? leaderId)
         {
             if (!string.IsNullOrEmpty(leaderId))
@@ -231,10 +213,8 @@ class Program
             }
         }
 
-        // Subscribe to all nodes' leader change events
         foreach (var node in cluster)
         {
-            // Access the internal Raft instance through reflection since it's private
             var raftField = typeof(DistributedSettings).GetField(
                 "_raft",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
@@ -247,13 +227,10 @@ class Program
 
         try
         {
-            // Check if there's already a leader
             if (cluster.Any(s => s.State == ServerState.Leader))
             {
                 return;
             }
-
-            // Wait for leader election
             await tcs.Task;
         }
         catch (OperationCanceledException)
@@ -262,7 +239,6 @@ class Program
         }
         finally
         {
-            // Unsubscribe from events
             foreach (var node in cluster)
             {
                 var raftField = typeof(DistributedSettings).GetField(
@@ -290,12 +266,9 @@ class Program
         var leader = cluster.FirstOrDefault(s => s.State == ServerState.Leader);
         if (leader == null)
         {
-            // No leader, just wait a short time
             await Task.Delay(100);
             return;
         }
-
-        // Get the leader's current commit index
         var raftField = typeof(DistributedSettings).GetField(
             "_raft",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
@@ -308,7 +281,6 @@ class Program
 
         var targetCommitIndex = leaderRaft.CommitIndex;
 
-        // If no entries to replicate, just wait briefly
         if (targetCommitIndex == 0)
         {
             await Task.Delay(100);
@@ -318,7 +290,6 @@ class Program
         var tcs = new TaskCompletionSource<bool>();
         var cts = new CancellationTokenSource(timeoutMs);
 
-        // Cancel the task if timeout is reached
         cts.Token.Register(() => tcs.TrySetResult(true));
 
         var replicationCount = 0;
@@ -336,7 +307,6 @@ class Program
             }
         }
 
-        // Subscribe to log commit events from followers
         var followers = cluster.Where(s => s.State == ServerState.Follower).ToList();
         foreach (var follower in followers)
         {
@@ -350,13 +320,9 @@ class Program
         {
             await tcs.Task;
         }
-        catch (OperationCanceledException)
-        {
-            // Timeout reached, continue anyway
-        }
+        catch (OperationCanceledException) { }
         finally
         {
-            // Unsubscribe from events
             foreach (var follower in followers)
             {
                 if (raftField?.GetValue(follower) is Raft.Client.Raft followerRaft)

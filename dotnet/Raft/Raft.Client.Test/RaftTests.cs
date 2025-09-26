@@ -21,7 +21,6 @@ public class RaftTests
         _cluster = new List<Raft>();
         var clusterRegistry = new Dictionary<string, Raft>();
 
-        // Create a 5-server cluster with shared registry
         foreach (var serverId in _serverIds)
         {
             var raft = new Raft(serverId, _serverIds, clusterRegistry);
@@ -42,6 +41,7 @@ public class RaftTests
         var raft = new Raft("test-server", new List<string> { "test-server", "other-server" });
 
         // Assert
+
         Assert.That(raft.ServerId, Is.EqualTo("test-server"));
         Assert.That(raft.State, Is.EqualTo(ServerState.Follower));
         Assert.That(raft.CurrentTerm, Is.EqualTo(0));
@@ -92,7 +92,6 @@ public class RaftTests
         // Act
         var result = raft.RequestVote(args);
 
-        // Assert
         Assert.That(result.VoteGranted, Is.False);
         Assert.That(result.Term, Is.EqualTo(5));
     }
@@ -113,7 +112,6 @@ public class RaftTests
         // Act
         var result = raft.RequestVote(args);
 
-        // Assert
         Assert.That(result.Term, Is.EqualTo(5));
         Assert.That(raft.CurrentTerm, Is.EqualTo(5));
         Assert.That(raft.State, Is.EqualTo(ServerState.Follower));
@@ -135,7 +133,6 @@ public class RaftTests
         // Act
         var result = raft.RequestVote(args);
 
-        // Assert
         Assert.That(result.VoteGranted, Is.True);
         Assert.That(result.Term, Is.EqualTo(1));
         Assert.That(raft.VotedFor, Is.EqualTo("candidate"));
@@ -169,7 +166,6 @@ public class RaftTests
         // Act
         var result = raft.RequestVote(secondArgs);
 
-        // Assert
         Assert.That(result.VoteGranted, Is.False);
         Assert.That(raft.VotedFor, Is.EqualTo("candidate1"));
     }
@@ -194,7 +190,6 @@ public class RaftTests
         // Act
         var result = raft.AppendEntries(args);
 
-        // Assert
         Assert.That(result.Success, Is.False);
         Assert.That(result.Term, Is.EqualTo(5));
     }
@@ -217,7 +212,6 @@ public class RaftTests
         // Act
         var result = raft.AppendEntries(args);
 
-        // Assert
         Assert.That(result.Term, Is.EqualTo(5));
         Assert.That(raft.CurrentTerm, Is.EqualTo(5));
         Assert.That(raft.State, Is.EqualTo(ServerState.Follower));
@@ -242,7 +236,6 @@ public class RaftTests
         // Act
         var result = raft.AppendEntries(args);
 
-        // Assert
         Assert.That(result.Success, Is.True);
         Assert.That(result.Term, Is.EqualTo(1));
         Assert.That(raft.CurrentLeader, Is.EqualTo("leader"));
@@ -285,7 +278,6 @@ public class RaftTests
         // Act
         var result = raft.AppendEntries(args);
 
-        // Assert
         Assert.That(result.Success, Is.False);
     }
 
@@ -315,7 +307,6 @@ public class RaftTests
         // Act
         var result = raft.AppendEntries(args);
 
-        // Assert
         Assert.That(result.Success, Is.True);
         Assert.That(raft.GetLog().Count, Is.EqualTo(1));
         Assert.That(raft.GetLog()[0].Command, Is.EqualTo("test-command"));
@@ -381,7 +372,6 @@ public class RaftTests
         // Act
         var result = raft.AppendEntries(args);
 
-        // Assert
         Assert.That(result.Success, Is.True);
         Assert.That(raft.GetLog().Count, Is.EqualTo(3));
         Assert.That(raft.GetLog()[1].Command, Is.EqualTo("new-cmd2"));
@@ -425,7 +415,6 @@ public class RaftTests
         // Act
         var result = raft.AppendEntries(args);
 
-        // Assert
         Assert.That(result.Success, Is.True);
         Assert.That(raft.CommitIndex, Is.EqualTo(2));
         Assert.That(raft.LastApplied, Is.EqualTo(2));
@@ -444,7 +433,6 @@ public class RaftTests
         // Act
         var result = raft.SubmitCommand("test-command");
 
-        // Assert
         Assert.That(result, Is.False);
         Assert.That(raft.GetLog().Count, Is.EqualTo(0));
     }
@@ -462,7 +450,6 @@ public class RaftTests
         // Act
         var result = raft.SubmitCommand("test-command");
 
-        // Assert
         Assert.That(result, Is.True);
         Assert.That(raft.GetLog().Count, Is.EqualTo(1));
         Assert.That(raft.GetLog()[0].Command, Is.EqualTo("test-command"));
@@ -479,7 +466,6 @@ public class RaftTests
         // Act
         var status = raft.GetStatus();
 
-        // Assert
         Assert.That(status, Is.Not.Null);
 
         // Use dynamic to access the anonymous object properties
@@ -509,7 +495,6 @@ public class RaftTests
         };
         raft.RequestVote(args);
 
-        // Assert
         Assert.That(stateChanges.Count, Is.EqualTo(1));
         Assert.That(stateChanges[0].oldState, Is.EqualTo(ServerState.Follower));
         Assert.That(stateChanges[0].newState, Is.EqualTo(ServerState.Follower));
@@ -535,7 +520,6 @@ public class RaftTests
         };
         raft.AppendEntries(args);
 
-        // Assert
         Assert.That(leaderChanges.Count, Is.EqualTo(1));
         Assert.That(leaderChanges[0], Is.EqualTo("new-leader"));
     }
@@ -568,7 +552,6 @@ public class RaftTests
         };
         raft.AppendEntries(args);
 
-        // Assert
         Assert.That(committedEntries.Count, Is.EqualTo(1));
         Assert.That(committedEntries[0].Command, Is.EqualTo("test-command"));
     }
@@ -618,7 +601,6 @@ public class RaftTests
         };
         var result2 = raft.AppendEntries(args2);
 
-        // Assert
         Assert.That(result1.Success, Is.True);
         Assert.That(result2.Success, Is.True);
         Assert.That(raft.GetLog().Count, Is.EqualTo(2));
@@ -635,7 +617,6 @@ public class RaftTests
         // Act
         raft.Start();
 
-        // Assert
         Assert.That(raft.State, Is.EqualTo(ServerState.Follower));
     }
 }
