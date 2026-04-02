@@ -31,6 +31,14 @@ namespace bson.Dispatcher
         /// <value></value>
         public Action<Exception> ExceptionHandler { get; set; } = (_) => { };
 
+        /// <summary>
+        /// When true, StopAsync / DisposeAsync will let workers finish processing
+        /// all queued items before shutting down. New enqueues are rejected immediately.
+        /// When false, workers are cancelled immediately and queued items are discarded.
+        /// @default false.
+        /// </summary>
+        public bool DrainOnDispose { get; set; } = false;
+
         public PartitionKeyAlgorithm PartitionKeyAlgorithm { get; set; } =
             PartitionKeyAlgorithm.Murmur2;
     }

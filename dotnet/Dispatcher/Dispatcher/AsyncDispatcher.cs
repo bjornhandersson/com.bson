@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -14,6 +14,7 @@ namespace bson.Dispatcher
         private readonly Task[] _workers;
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly DispatcherOptions _options;
+        private int _stopped;
 
         private readonly IHashGenerator _hashGenerator;
 
@@ -41,9 +42,8 @@ namespace bson.Dispatcher
                 _partitions[i] = Channel.CreateBounded<Func<CancellationToken, ValueTask>>(
                     (int)_maxCapacity
                 );
-                _workers[i] = Task.Factory.StartNew(
-                    () => ProcessPartition(localIndex, _cancellationTokenSource.Token),
-                    TaskCreationOptions.LongRunning
+                _workers[i] = Task.Run(() =>
+                    ProcessPartition(localIndex, _cancellationTokenSource.Token)
                 );
             }
         }
@@ -63,11 +63,10 @@ namespace bson.Dispatcher
 
         public async Task StopAsync()
         {
-            _cancellationTokenSource.Cancel();
-            await Task.WhenAll(_workers);
+            await DisposeAsync();
         }
 
-        private async ValueTask ProcessPartition(int partition, CancellationToken cancellationToken)
+        private async Task ProcessPartition(int partition, CancellationToken cancellationToken)
         {
             var channel = _partitions[partition];
             while (!cancellationToken.IsCancellationRequested)
@@ -91,6 +90,14 @@ namespace bson.Dispatcher
 
                     await workFunc(taskCancellation.Token);
                 }
+                catch (ChannelClosedException)
+                {
+                    break;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
                 catch (OperationCanceledException)
                 {
                     continue;
@@ -103,11 +110,49 @@ namespace bson.Dispatcher
             }
         }
 
+        public async ValueTask DisposeAsync()
+        {
+            if (!SignalStop())
+            {
+                return;
+            }
+
+            await Task.WhenAll(_workers);
+            _cancellationTokenSource.Dispose();
+        }
+
         public void Dispose()
         {
-            _cancellationTokenSource.Cancel();
-            // Guard against "deadlock" when the same thread that created the dispatcher is Disposing it.
-            Task.Run(() => StopAsync()).Wait();
+            if (!SignalStop())
+            {
+                return;
+            }
+
+            // Do not block on workers — use DisposeAsync to await graceful shutdown.
+            // Blocking here risks deadlocks when work items capture the calling context.
+            _cancellationTokenSource.Dispose();
+        }
+
+        private bool SignalStop()
+        {
+            if (Interlocked.Exchange(ref _stopped, 1) == 1)
+            {
+                return false;
+            }
+
+            if (_options.DrainOnDispose)
+            {
+                foreach (var partition in _partitions)
+                {
+                    partition.Writer.Complete();
+                }
+            }
+            else
+            {
+                _cancellationTokenSource.Cancel();
+            }
+
+            return true;
         }
 
         private uint GetPartitionKey(uint partition)

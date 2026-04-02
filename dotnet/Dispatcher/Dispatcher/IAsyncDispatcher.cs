@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace bson.Dispatcher
 {
-    public interface IAsyncDispatcher : IDisposable
+    public interface IAsyncDispatcher : IDisposable, IAsyncDisposable
     {
         ValueTask EnqueueAsync(int partition, Func<CancellationToken, ValueTask> action);
 

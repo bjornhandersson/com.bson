@@ -51,7 +51,7 @@ namespace bson.Dispatcher.Test
             var tasksStarted = new TaskCompletionSource<bool>();
             var completed = new TaskCompletionSource<bool>();
             var enqueueBlocked = new TaskCompletionSource<bool>();
-            
+
             using IAsyncDispatcher dispatcher = new AsyncDispatcher(
                 new DispatcherOptions { Partitions = partitions, MaxCapacity = 1 }
             );
@@ -61,19 +61,21 @@ namespace bson.Dispatcher.Test
             for (int i = 0; i < 4; i++)
             {
                 int partition = i % partitions;
-                var enqueueTask = dispatcher.EnqueueAsync(
-                    partition,
-                    async (_) =>
-                    {
-                        // Signal that this task has started execution
-                        if (Interlocked.Increment(ref taskCompleted) == 2)
+                var enqueueTask = dispatcher
+                    .EnqueueAsync(
+                        partition,
+                        async (_) =>
                         {
-                            // First 2 tasks (one per partition) have started
-                            tasksStarted.SetResult(true);
+                            // Signal that this task has started execution
+                            if (Interlocked.Increment(ref taskCompleted) == 2)
+                            {
+                                // First 2 tasks (one per partition) have started
+                                tasksStarted.SetResult(true);
+                            }
+                            await completed.Task;
                         }
-                        await completed.Task;
-                    }
-                ).AsTask();
+                    )
+                    .AsTask();
                 enqueueTasks.Add(enqueueTask);
             }
 
@@ -113,23 +115,31 @@ namespace bson.Dispatcher.Test
             await enqueueBlocked.Task;
 
             // Assert - The enqueue should be blocked (not completed)
-            blockedEnqueueTask.IsCompleted.Should().BeFalse(because: "Task should be blocked by back pressure");
+            blockedEnqueueTask
+                .IsCompleted.Should()
+                .BeFalse(because: "Task should be blocked by back pressure");
 
             // Verify that only 2 tasks have started execution (the others are queued)
-            taskCompleted.Should().Be(2, because: "Only 2 tasks should have started (one per partition)");
+            taskCompleted
+                .Should()
+                .Be(2, because: "Only 2 tasks should have started (one per partition)");
 
             // Free up the dispatcher by completing all waiting tasks
             completed.SetResult(true);
-            
+
             // Wait for all enqueue operations to complete
             await Task.WhenAll(enqueueTasks);
             var enqueueResult = await blockedEnqueueTask;
-            
+
             // Assert the blocked enqueue eventually succeeded
-            enqueueResult.Should().BeTrue(because: "Enqueue should succeed after capacity is freed");
+            enqueueResult
+                .Should()
+                .BeTrue(because: "Enqueue should succeed after capacity is freed");
 
             // Verify all tasks eventually completed
-            taskCompleted.Should().Be(5, because: "All 5 tasks should complete after releasing the block");
+            taskCompleted
+                .Should()
+                .Be(5, because: "All 5 tasks should complete after releasing the block");
         }
 
         [Test]
@@ -175,6 +185,104 @@ namespace bson.Dispatcher.Test
             Console.WriteLine(
                 $"Elapsed time: {stopwatch.Elapsed.TotalMilliseconds} ms Completed tasks: {taskCompleted} CPU: {partitions}"
             );
+        }
+
+        [Test]
+        public async Task Dispatcher_Should_drain_queued_tasks_when_DrainOnDispose_is_true()
+        {
+            // Arrange
+            int completed = 0;
+            var allEnqueued = new TaskCompletionSource<bool>();
+
+            var dispatcher = new AsyncDispatcher(
+                new DispatcherOptions
+                {
+                    Partitions = 1,
+                    MaxCapacity = 100,
+                    DrainOnDispose = true,
+                }
+            );
+
+            // Block the worker so items queue up behind it
+            var gate = new TaskCompletionSource<bool>();
+            await dispatcher.EnqueueAsync(
+                partition: 0,
+                async (_) =>
+                {
+                    await gate.Task;
+                    Interlocked.Increment(ref completed);
+                }
+            );
+
+            // Enqueue 5 more items while the worker is blocked
+            for (int i = 0; i < 5; i++)
+            {
+                await dispatcher.EnqueueAsync(
+                    partition: 0,
+                    (_) =>
+                    {
+                        Interlocked.Increment(ref completed);
+                        return default;
+                    }
+                );
+            }
+
+            // Release the gate so items can start processing
+            gate.SetResult(true);
+
+            // Dispose with drain — should wait for all 6 items to finish
+            await dispatcher.DisposeAsync();
+
+            completed
+                .Should()
+                .Be(6, because: "all queued tasks should be processed before shutdown");
+        }
+
+        [Test]
+        public async Task Dispatcher_Should_discard_queued_tasks_when_DrainOnDispose_is_false()
+        {
+            // Arrange
+            int completed = 0;
+
+            var dispatcher = new AsyncDispatcher(
+                new DispatcherOptions
+                {
+                    Partitions = 1,
+                    MaxCapacity = 100,
+                    DrainOnDispose = false,
+                }
+            );
+
+            // Block the worker so items queue up behind it
+            var gate = new TaskCompletionSource<bool>();
+            await dispatcher.EnqueueAsync(
+                partition: 0,
+                async (ct) =>
+                {
+                    await Task.Delay(Timeout.Infinite, ct);
+                    Interlocked.Increment(ref completed);
+                }
+            );
+
+            // Enqueue 5 more items while the worker is blocked
+            for (int i = 0; i < 5; i++)
+            {
+                await dispatcher.EnqueueAsync(
+                    partition: 0,
+                    (_) =>
+                    {
+                        Interlocked.Increment(ref completed);
+                        return default;
+                    }
+                );
+            }
+
+            // Dispose without drain — should cancel immediately
+            await dispatcher.DisposeAsync();
+
+            completed
+                .Should()
+                .Be(0, because: "queued tasks should be discarded and the blocked task cancelled");
         }
 
         [Test]
