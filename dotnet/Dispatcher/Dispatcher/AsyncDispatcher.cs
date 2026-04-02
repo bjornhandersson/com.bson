@@ -61,6 +61,14 @@ namespace bson.Dispatcher
             return _partitions[GetPartitionKey(partitionKey)].Writer.WriteAsync(action);
         }
 
+        public ValueTask EnqueueAsync(
+            string partitionKey,
+            Func<CancellationToken, ValueTask> action
+        )
+        {
+            return EnqueueAsync(System.Text.Encoding.UTF8.GetBytes(partitionKey), action);
+        }
+
         public async Task StopAsync()
         {
             await DisposeAsync();

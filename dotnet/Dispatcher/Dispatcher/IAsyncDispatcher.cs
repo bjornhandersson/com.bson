@@ -10,6 +10,8 @@ namespace bson.Dispatcher
 
         ValueTask EnqueueAsync(byte[] partitionKey, Func<CancellationToken, ValueTask> action);
 
+        ValueTask EnqueueAsync(string partitionKey, Func<CancellationToken, ValueTask> action);
+
         Task StopAsync();
     }
 }
