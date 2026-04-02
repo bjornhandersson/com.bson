@@ -82,7 +82,7 @@ namespace bson.Dispatcher
                 try
                 {
                     Func<CancellationToken, ValueTask> workFunc;
-                    if (!channel.Reader.TryRead(out workFunc))
+                    if (!channel.Reader.TryRead(out workFunc!))
                     {
                         workFunc = await channel.Reader.ReadAsync(cancellationToken);
                     }
