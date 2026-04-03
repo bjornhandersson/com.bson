@@ -35,8 +35,8 @@ export default function Home() {
           },
         ],
       },
-      center: [18.0440866, 59.3281936],
-      zoom: 12,
+      center: [17.1, 58.96], // Midpoint Stockholm – Norrköping
+      zoom: 8,
     });
 
     map.current.on("load", () => {
@@ -47,38 +47,14 @@ export default function Home() {
         maxzoom: 14,
       });
 
-      // Polygon fill
+      // Route
       map.current!.addLayer({
-        id: "mvt-geofences-fill",
-        type: "fill",
-        source: "mvt-overlay",
-        "source-layer": "geofences",
-        paint: {
-          "fill-color": "#3b82f6",
-          "fill-opacity": 0.15,
-        },
-      });
-
-      // Polygon outline
-      map.current!.addLayer({
-        id: "mvt-geofences-outline",
+        id: "mvt-route",
         type: "line",
         source: "mvt-overlay",
-        "source-layer": "geofences",
+        "source-layer": "route",
         paint: {
-          "line-color": "#3b82f6",
-          "line-width": 2,
-        },
-      });
-
-      // LineString
-      map.current!.addLayer({
-        id: "mvt-tracks",
-        type: "line",
-        source: "mvt-overlay",
-        "source-layer": "tracks",
-        paint: {
-          "line-color": "#f59e0b",
+          "line-color": "#ef4444",
           "line-width": 3,
         },
       });
@@ -91,7 +67,7 @@ export default function Home() {
         "source-layer": "points",
         paint: {
           "circle-radius": 7,
-          "circle-color": "#ef4444",
+          "circle-color": "#10b981",
           "circle-stroke-color": "#ffffff",
           "circle-stroke-width": 2,
         },

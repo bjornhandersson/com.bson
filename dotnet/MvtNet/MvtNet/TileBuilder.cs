@@ -56,7 +56,6 @@ public class LayerBuilder
     private readonly TagEncoder _tags = new();
     private readonly List<Tile.Types.Feature> _features = new();
     private ulong _nextId = 1;
-
     private readonly TileBuilder _tile;
 
     internal LayerBuilder(TileBuilder tile, string name, int z, int x, int y, uint extent)
@@ -100,9 +99,10 @@ public class LayerBuilder
 
     /// <summary>
     /// Adds a LineString feature from WGS84 coordinates.
-    /// All coordinates are projected (even outside tile bounds) so segments crossing
-    /// tile boundaries render correctly. Silently skipped if the geometry doesn't
-    /// overlap the tile at all.
+    /// The line is clipped to the tile extent (with a buffer margin) so only
+    /// the visible portion is encoded. If the line crosses the tile multiple
+    /// times, multiple features are emitted. Silently skipped if the geometry
+    /// doesn't overlap the tile at all.
     /// </summary>
     public LayerBuilder AddLineString(
         ReadOnlySpan<(double Lat, double Lng)> coords,
@@ -121,20 +121,24 @@ public class LayerBuilder
 
         var tileCoords = ProjectAll(coords);
 
-        var feature = new Tile.Types.Feature
-        {
-            Id = _nextId++,
-            Type = Tile.Types.GeomType.Linestring,
-        };
-
-        feature.Geometry.AddRange(GeometryEncoder.EncodeLineString(tileCoords));
-
+        uint[]? encodedTags = null;
         if (attributes is not null)
         {
-            feature.Tags.AddRange(_tags.Encode(attributes));
+            encodedTags = _tags.Encode(attributes);
         }
 
-        _features.Add(feature);
+        var clippedSegments = LineClipper.Clip(tileCoords, _extent);
+
+        foreach (var segment in clippedSegments)
+        {
+            if (segment.Length < 2)
+            {
+                continue;
+            }
+
+            AddLineFeature(segment, encodedTags);
+        }
+
         return this;
     }
 
@@ -228,6 +232,24 @@ public class LayerBuilder
         }
 
         return result;
+    }
+
+    private void AddLineFeature(TileCoord[] coords, uint[]? encodedTags)
+    {
+        var feature = new Tile.Types.Feature
+        {
+            Id = _nextId++,
+            Type = Tile.Types.GeomType.Linestring,
+        };
+
+        feature.Geometry.AddRange(GeometryEncoder.EncodeLineString(coords));
+
+        if (encodedTags is not null)
+        {
+            feature.Tags.AddRange(encodedTags);
+        }
+
+        _features.Add(feature);
     }
 
     /// <summary>

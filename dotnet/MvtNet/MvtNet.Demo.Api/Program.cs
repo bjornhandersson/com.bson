@@ -3,57 +3,40 @@ using MvtNet;
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
+// Generate a 3000-point route: Stockholm → Norrköping (~200km)
+const int routePoints = 3000;
+const double startLat = 59.33,
+    startLng = 18.04;
+const double endLat = 58.59,
+    endLng = 16.18;
+
+var route = new (double, double)[routePoints];
+for (int i = 0; i < routePoints; i++)
+{
+    double t = (double)i / (routePoints - 1);
+    route[i] = (startLat + (endLat - startLat) * t, startLng + (endLng - startLng) * t);
+}
+
 app.MapGet(
     "/tiles/{z:int}/{x:int}/{y:int}",
     (int z, int x, int y) =>
     {
         var tileBuilder = new TileBuilder(z, x, y);
 
-        // Points — landmarks
+        tileBuilder
+            .Layer("route")
+            .AddLineString(
+                route,
+                new Dictionary<string, object> { ["name"] = "Stockholm → Norrköping" }
+            );
+
         var points = tileBuilder.Layer("points");
         points.AddPoint(
-            59.3281936,
-            18.0440866,
-            new Dictionary<string, object> { ["name"] = "Stockholm Central" }
+            startLat,
+            startLng,
+            new Dictionary<string, object> { ["name"] = "Stockholm" }
         );
-        points.AddPoint(
-            59.3326,
-            18.0649,
-            new Dictionary<string, object> { ["name"] = "Östermalm" }
-        );
-        points.AddPoint(
-            59.3190,
-            18.0686,
-            new Dictionary<string, object> { ["name"] = "Södermalm" }
-        );
-        points.AddPoint(59.3340, 18.0300, new Dictionary<string, object> { ["name"] = "Norrmalm" });
-
-        // LineString — a route through the city
-        var tracks = tileBuilder.Layer("tracks");
-        tracks.AddLineString(
-            new (double, double)[]
-            {
-                (59.3340, 18.0300),
-                (59.3310, 18.0400),
-                (59.3281936, 18.0440866),
-                (59.3260, 18.0550),
-                (59.3326, 18.0649),
-            },
-            new Dictionary<string, object> { ["name"] = "City Walk" }
-        );
-
-        // Polygon — a geofence around central Stockholm
-        var geofences = tileBuilder.Layer("geofences");
-        geofences.AddPolygon(
-            new (double, double)[]
-            {
-                (59.3380, 18.0250),
-                (59.3380, 18.0750),
-                (59.3150, 18.0750),
-                (59.3150, 18.0250),
-            },
-            new Dictionary<string, object> { ["name"] = "Central Zone" }
-        );
+        points.AddPoint(endLat, endLng, new Dictionary<string, object> { ["name"] = "Norrköping" });
 
         return Results.Bytes(tileBuilder.Build(), "application/vnd.mapbox-vector-tile");
     }
