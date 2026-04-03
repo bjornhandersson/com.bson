@@ -1,5 +1,5 @@
 <Solution>
-  <Project Path="MvtNet.Demo/MvtNet.Demo.csproj" />
+  <Project Path="MvtNet.Demo.Api/MvtNet.Demo.Api.csproj" />
   <Project Path="MvtNet.Tests/MvtNet.Tests.csproj" />
   <Project Path="MvtNet/MvtNet.csproj" />
 </Solution>
