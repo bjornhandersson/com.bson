@@ -3,7 +3,7 @@ namespace MvtNet;
 /// <summary>
 /// Encodes MVT geometry commands (MoveTo, LineTo, ClosePath) with zigzag + delta encoding.
 /// </summary>
-public static class GeometryEncoder
+internal static class GeometryEncoder
 {
     private const uint MoveToId = 1;
     private const uint LineToId = 2;
@@ -14,12 +14,7 @@ public static class GeometryEncoder
     /// </summary>
     public static uint[] EncodePoint(int x, int y)
     {
-        return
-        [
-            CommandInteger(MoveToId, 1),
-            ZigZag(x),
-            ZigZag(y)
-        ];
+        return [CommandInteger(MoveToId, 1), ZigZag(x), ZigZag(y)];
     }
 
     /// <summary>
@@ -29,7 +24,10 @@ public static class GeometryEncoder
     {
         if (coords.Length < 2)
         {
-            throw new ArgumentException("LineString requires at least 2 coordinates.", nameof(coords));
+            throw new ArgumentException(
+                "LineString requires at least 2 coordinates.",
+                nameof(coords)
+            );
         }
 
         var commands = new List<uint>(3 + (coords.Length - 1) * 2 + 1);
@@ -62,7 +60,10 @@ public static class GeometryEncoder
     {
         if (ring.Length < 3)
         {
-            throw new ArgumentException("Polygon ring requires at least 3 coordinates.", nameof(ring));
+            throw new ArgumentException(
+                "Polygon ring requires at least 3 coordinates.",
+                nameof(ring)
+            );
         }
 
         var commands = new List<uint>(3 + (ring.Length - 1) * 2 + 2);

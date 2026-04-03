@@ -25,7 +25,14 @@ public static class TileMath
     /// Projects a WGS84 point into tile-local integer coordinates (0..extent).
     /// Returns null if the point is outside the tile bounds.
     /// </summary>
-    public static TileCoord? ProjectPoint(double lat, double lng, int z, int x, int y, uint extent = DefaultExtent)
+    public static TileCoord? ProjectPoint(
+        double lat,
+        double lng,
+        int z,
+        int x,
+        int y,
+        uint extent = DefaultExtent
+    )
     {
         var bounds = GetTileBounds(z, x, y);
 
@@ -55,7 +62,10 @@ public static class TileMath
     public static bool Contains(double lat, double lng, int z, int x, int y)
     {
         var bounds = GetTileBounds(z, x, y);
-        return lat >= bounds.South && lat <= bounds.North && lng >= bounds.West && lng <= bounds.East;
+        return lat >= bounds.South
+            && lat <= bounds.North
+            && lng >= bounds.West
+            && lng <= bounds.East;
     }
 
     private static double LatFromY(int y, double n)

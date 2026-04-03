@@ -149,11 +149,9 @@ public class TagEncoderTests
     public void Encode_ProducesCorrectIndexPairs()
     {
         var encoder = new TagEncoder();
-        var tags = encoder.Encode(new Dictionary<string, object>
-        {
-            ["name"] = "Stockholm",
-            ["population"] = 1000000L
-        });
+        var tags = encoder.Encode(
+            new Dictionary<string, object> { ["name"] = "Stockholm", ["population"] = 1000000L }
+        );
 
         // key 0 = "name", value 0 = "Stockholm"
         // key 1 = "population", value 1 = 1000000
@@ -183,10 +181,11 @@ public class TileBuilderTests
     {
         var builder = new TileBuilder(10, 563, 301);
         var layer = builder.Layer("points");
-        bool added = layer.AddPoint(59.3281936, 18.0440866, new Dictionary<string, object>
-        {
-            ["name"] = "Stockholm"
-        });
+        bool added = layer.AddPoint(
+            59.3281936,
+            18.0440866,
+            new Dictionary<string, object> { ["name"] = "Stockholm" }
+        );
 
         Assert.That(added, Is.True);
 

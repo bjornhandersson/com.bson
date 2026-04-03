@@ -7,7 +7,7 @@ namespace MvtNet;
 /// Phase 1 stub — produces an MVT tile with an X shape (two diagonal LineStrings spanning the full extent).
 /// Will be replaced by proper encoding in Phase 2.
 /// </summary>
-public static class StubTileBuilder
+internal static class StubTileBuilder
 {
     private const uint Extent = 4096;
 
@@ -19,7 +19,7 @@ public static class StubTileBuilder
         {
             Name = "stub",
             Version = 2,
-            Extent = Extent
+            Extent = Extent,
         };
 
         // Line 1: top-left (0,0) → bottom-right (4096,4096)
@@ -33,13 +33,15 @@ public static class StubTileBuilder
         return tile.ToByteArray();
     }
 
-    private static Tile.Types.Feature CreateLineFeature(ulong id, uint x1, uint y1, uint x2, uint y2)
+    private static Tile.Types.Feature CreateLineFeature(
+        ulong id,
+        uint x1,
+        uint y1,
+        uint x2,
+        uint y2
+    )
     {
-        var feature = new Tile.Types.Feature
-        {
-            Id = id,
-            Type = Tile.Types.GeomType.Linestring
-        };
+        var feature = new Tile.Types.Feature { Id = id, Type = Tile.Types.GeomType.Linestring };
 
         // MoveTo(x1, y1)
         feature.Geometry.Add(CommandInteger(1, 1)); // MoveTo, count=1

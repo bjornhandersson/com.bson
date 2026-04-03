@@ -5,7 +5,7 @@ namespace MvtNet;
 /// <summary>
 /// Manages key/value dictionaries per layer and encodes feature tags as index pairs.
 /// </summary>
-public class TagEncoder
+internal class TagEncoder
 {
     private readonly Dictionary<string, int> _keys = new();
     private readonly Dictionary<string, int> _stringValues = new();
@@ -60,7 +60,10 @@ public class TagEncoder
             double d => GetOrAddDoubleValue(d),
             float f => GetOrAddDoubleValue(f),
             bool b => GetOrAddBoolValue(b),
-            _ => throw new ArgumentException($"Unsupported tag value type: {value.GetType().Name}", nameof(value))
+            _ => throw new ArgumentException(
+                $"Unsupported tag value type: {value.GetType().Name}",
+                nameof(value)
+            ),
         };
     }
 

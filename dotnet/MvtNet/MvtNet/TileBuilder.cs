@@ -70,7 +70,11 @@ public class LayerBuilder
     /// Adds a point feature at the given WGS84 coordinate.
     /// Returns false if the point is outside this tile.
     /// </summary>
-    public bool AddPoint(double lat, double lng, IEnumerable<KeyValuePair<string, object>>? attributes = null)
+    public bool AddPoint(
+        double lat,
+        double lng,
+        IEnumerable<KeyValuePair<string, object>>? attributes = null
+    )
     {
         var coord = TileMath.ProjectPoint(lat, lng, _z, _x, _y, _extent);
         if (coord is null)
@@ -78,11 +82,7 @@ public class LayerBuilder
             return false;
         }
 
-        var feature = new Tile.Types.Feature
-        {
-            Id = _nextId++,
-            Type = Tile.Types.GeomType.Point
-        };
+        var feature = new Tile.Types.Feature { Id = _nextId++, Type = Tile.Types.GeomType.Point };
 
         feature.Geometry.AddRange(GeometryEncoder.EncodePoint(coord.Value.X, coord.Value.Y));
 
@@ -99,7 +99,10 @@ public class LayerBuilder
     /// Adds a LineString feature from WGS84 coordinates.
     /// Points outside the tile are dropped. Returns false if fewer than 2 points remain.
     /// </summary>
-    public bool AddLineString(ReadOnlySpan<(double Lat, double Lng)> coords, IEnumerable<KeyValuePair<string, object>>? attributes = null)
+    public bool AddLineString(
+        ReadOnlySpan<(double Lat, double Lng)> coords,
+        IEnumerable<KeyValuePair<string, object>>? attributes = null
+    )
     {
         var tileCoords = new List<TileCoord>();
         foreach (var (lat, lng) in coords)
@@ -119,7 +122,7 @@ public class LayerBuilder
         var feature = new Tile.Types.Feature
         {
             Id = _nextId++,
-            Type = Tile.Types.GeomType.Linestring
+            Type = Tile.Types.GeomType.Linestring,
         };
 
         feature.Geometry.AddRange(GeometryEncoder.EncodeLineString(tileCoords.ToArray()));
@@ -137,7 +140,10 @@ public class LayerBuilder
     /// Adds a Polygon feature from WGS84 coordinates (outer ring only for now).
     /// The ring should NOT repeat the first point.
     /// </summary>
-    public bool AddPolygon(ReadOnlySpan<(double Lat, double Lng)> ring, IEnumerable<KeyValuePair<string, object>>? attributes = null)
+    public bool AddPolygon(
+        ReadOnlySpan<(double Lat, double Lng)> ring,
+        IEnumerable<KeyValuePair<string, object>>? attributes = null
+    )
     {
         var tileCoords = new List<TileCoord>();
         foreach (var (lat, lng) in ring)
@@ -154,11 +160,7 @@ public class LayerBuilder
             return false;
         }
 
-        var feature = new Tile.Types.Feature
-        {
-            Id = _nextId++,
-            Type = Tile.Types.GeomType.Polygon
-        };
+        var feature = new Tile.Types.Feature { Id = _nextId++, Type = Tile.Types.GeomType.Polygon };
 
         feature.Geometry.AddRange(GeometryEncoder.EncodePolygon(tileCoords.ToArray()));
 
@@ -177,7 +179,7 @@ public class LayerBuilder
         {
             Name = _name,
             Version = 2,
-            Extent = _extent
+            Extent = _extent,
         };
 
         layer.Keys.AddRange(_tags.Keys);
