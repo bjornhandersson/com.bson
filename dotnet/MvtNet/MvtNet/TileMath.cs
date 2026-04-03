@@ -34,24 +34,39 @@ public static class TileMath
         uint extent = DefaultExtent
     )
     {
-        var bounds = GetTileBounds(z, x, y);
-
-        if (lat < bounds.South || lat > bounds.North || lng < bounds.West || lng > bounds.East)
+        if (!Contains(lat, lng, z, x, y))
         {
             return null;
         }
 
-        // Normalize longitude within tile (0..1)
+        return ProjectPointUnclamped(lat, lng, z, x, y, extent);
+    }
+
+    /// <summary>
+    /// Projects a WGS84 point into tile-local coordinates without bounds checking.
+    /// Coordinates may be negative or exceed the extent — this is valid for MVT
+    /// geometry that crosses tile boundaries (LineStrings, Polygons).
+    /// </summary>
+    internal static TileCoord ProjectPointUnclamped(
+        double lat,
+        double lng,
+        int z,
+        int x,
+        int y,
+        uint extent = DefaultExtent
+    )
+    {
+        var bounds = GetTileBounds(z, x, y);
+
         double tx = (lng - bounds.West) / (bounds.East - bounds.West);
 
-        // Normalize latitude within tile using Mercator projection (0..1)
         double worldY = LatToMercatorY(lat);
         double northY = LatToMercatorY(bounds.North);
         double southY = LatToMercatorY(bounds.South);
         double ty = (worldY - northY) / (southY - northY);
 
-        int px = Math.Clamp((int)Math.Round(tx * extent), 0, (int)extent);
-        int py = Math.Clamp((int)Math.Round(ty * extent), 0, (int)extent);
+        int px = (int)Math.Round(tx * extent);
+        int py = (int)Math.Round(ty * extent);
 
         return new TileCoord(px, py);
     }

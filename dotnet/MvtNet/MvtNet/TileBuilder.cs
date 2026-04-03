@@ -97,27 +97,26 @@ public class LayerBuilder
 
     /// <summary>
     /// Adds a LineString feature from WGS84 coordinates.
-    /// Points outside the tile are dropped. Returns false if fewer than 2 points remain.
+    /// All coordinates are projected (even outside tile bounds) so segments crossing
+    /// tile boundaries render correctly. Returns false if the geometry doesn't
+    /// overlap the tile at all.
     /// </summary>
     public bool AddLineString(
         ReadOnlySpan<(double Lat, double Lng)> coords,
         IEnumerable<KeyValuePair<string, object>>? attributes = null
     )
     {
-        var tileCoords = new List<TileCoord>();
-        foreach (var (lat, lng) in coords)
-        {
-            var tc = TileMath.ProjectPoint(lat, lng, _z, _x, _y, _extent);
-            if (tc is not null)
-            {
-                tileCoords.Add(tc.Value);
-            }
-        }
-
-        if (tileCoords.Count < 2)
+        if (coords.Length < 2)
         {
             return false;
         }
+
+        if (!OverlapsTile(coords))
+        {
+            return false;
+        }
+
+        var tileCoords = ProjectAll(coords);
 
         var feature = new Tile.Types.Feature
         {
@@ -125,7 +124,7 @@ public class LayerBuilder
             Type = Tile.Types.GeomType.Linestring,
         };
 
-        feature.Geometry.AddRange(GeometryEncoder.EncodeLineString(tileCoords.ToArray()));
+        feature.Geometry.AddRange(GeometryEncoder.EncodeLineString(tileCoords));
 
         if (attributes is not null)
         {
@@ -139,30 +138,33 @@ public class LayerBuilder
     /// <summary>
     /// Adds a Polygon feature from WGS84 coordinates (outer ring only for now).
     /// The ring should NOT repeat the first point.
+    /// All coordinates are projected (even outside tile bounds) so polygons crossing
+    /// tile boundaries render correctly.
     /// </summary>
     public bool AddPolygon(
         ReadOnlySpan<(double Lat, double Lng)> ring,
         IEnumerable<KeyValuePair<string, object>>? attributes = null
     )
     {
-        var tileCoords = new List<TileCoord>();
-        foreach (var (lat, lng) in ring)
-        {
-            var tc = TileMath.ProjectPoint(lat, lng, _z, _x, _y, _extent);
-            if (tc is not null)
-            {
-                tileCoords.Add(tc.Value);
-            }
-        }
-
-        if (tileCoords.Count < 3)
+        if (ring.Length < 3)
         {
             return false;
         }
 
-        var feature = new Tile.Types.Feature { Id = _nextId++, Type = Tile.Types.GeomType.Polygon };
+        if (!OverlapsTile(ring))
+        {
+            return false;
+        }
 
-        feature.Geometry.AddRange(GeometryEncoder.EncodePolygon(tileCoords.ToArray()));
+        var tileCoords = ProjectAll(ring);
+
+        var feature = new Tile.Types.Feature
+        {
+            Id = _nextId++,
+            Type = Tile.Types.GeomType.Polygon,
+        };
+
+        feature.Geometry.AddRange(GeometryEncoder.EncodePolygon(tileCoords));
 
         if (attributes is not null)
         {
@@ -171,6 +173,48 @@ public class LayerBuilder
 
         _features.Add(feature);
         return true;
+    }
+
+    /// <summary>
+    /// Checks whether the bounding box of the coordinates overlaps the tile.
+    /// </summary>
+    private bool OverlapsTile(ReadOnlySpan<(double Lat, double Lng)> coords)
+    {
+        var tileBounds = TileMath.GetTileBounds(_z, _x, _y);
+
+        double minLat = double.MaxValue, maxLat = double.MinValue;
+        double minLng = double.MaxValue, maxLng = double.MinValue;
+
+        foreach (var (lat, lng) in coords)
+        {
+            if (lat < minLat) { minLat = lat; }
+            if (lat > maxLat) { maxLat = lat; }
+            if (lng < minLng) { minLng = lng; }
+            if (lng > maxLng) { maxLng = lng; }
+        }
+
+        return maxLat >= tileBounds.South
+            && minLat <= tileBounds.North
+            && maxLng >= tileBounds.West
+            && minLng <= tileBounds.East;
+    }
+
+    private TileCoord[] ProjectAll(ReadOnlySpan<(double Lat, double Lng)> coords)
+    {
+        var result = new TileCoord[coords.Length];
+        for (int i = 0; i < coords.Length; i++)
+        {
+            result[i] = TileMath.ProjectPointUnclamped(
+                coords[i].Lat,
+                coords[i].Lng,
+                _z,
+                _x,
+                _y,
+                _extent
+            );
+        }
+
+        return result;
     }
 
     internal Tile.Types.Layer Build()
