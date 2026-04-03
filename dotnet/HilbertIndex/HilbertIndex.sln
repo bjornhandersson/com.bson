@@ -1,0 +1,30 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bson.HilbertIndex.Test", "bson.HilbertIndex.Test\bson.HilbertIndex.Test.csproj", "{833642E2-F903-E6A6-0FE5-AA0932DF774F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bson.HilbertIndex", "bson.HilbertIndex\bson.HilbertIndex.csproj", "{41A75C75-69C4-49EF-B9D2-1552F4E863B2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{833642E2-F903-E6A6-0FE5-AA0932DF774F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{833642E2-F903-E6A6-0FE5-AA0932DF774F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{833642E2-F903-E6A6-0FE5-AA0932DF774F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{833642E2-F903-E6A6-0FE5-AA0932DF774F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{41A75C75-69C4-49EF-B9D2-1552F4E863B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{41A75C75-69C4-49EF-B9D2-1552F4E863B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{41A75C75-69C4-49EF-B9D2-1552F4E863B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{41A75C75-69C4-49EF-B9D2-1552F4E863B2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {80862D0F-B06E-4669-83FF-F9F5DE919361}
+	EndGlobalSection
+EndGlobal
