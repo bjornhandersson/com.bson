@@ -14,7 +14,7 @@ internal static class GeometryEncoder
     /// </summary>
     public static uint[] EncodePoint(int x, int y)
     {
-        return [CommandInteger(MoveToId, 1), ZigZag(x), ZigZag(y)];
+        return new[] { CommandInteger(MoveToId, 1), ZigZag(x), ZigZag(y) };
     }
 
     /// <summary>

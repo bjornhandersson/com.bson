@@ -1,50 +1,29 @@
 # MvtNet
 
-A C# library that encodes WGS84 geographic features into [Mapbox Vector Tiles](https://github.com/mapbox/vector-tile-spec) (MVT spec v2.1).
-
-Give it a tile address and some coordinates. Get back MVT bytes.
-
-## Usage
-
-```csharp
-var tile = new TileBuilder(z: 10, x: 563, y: 301);
-
-tile.Layer("pois")
-    .AddPoint(59.328, 18.044, new Dictionary<string, object>
-    {
-        ["name"] = "Stockholm"
-    });
-
-byte[] mvt = tile.Build();
-```
-
-Serve it from any HTTP endpoint:
-
-```csharp
-app.MapGet("/tiles/{z:int}/{x:int}/{y:int}", (int z, int x, int y) =>
-{
-    var tile = new TileBuilder(z, x, y);
-    tile.Layer("pois").AddPoint(59.328, 18.044);
-    return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
-});
-```
-
-## Geometry types
-
-- **Point** -- `AddPoint(lat, lng)`
-- **LineString** -- `AddLineString(coords)`
-- **Polygon** -- `AddPolygon(ring)`
-
-All methods take WGS84 coordinates and optional attributes. Points outside the tile are automatically skipped.
-
-## Install
+WGS84 coordinates in, [MVT](https://github.com/mapbox/vector-tile-spec) bytes out. That's it.
 
 ```
 dotnet add package MvtNet
 ```
 
-Targets .NET 10. Single dependency: `Google.Protobuf`.
+```csharp
+var tile = new TileBuilder(z, x, y);
+tile.Layer("pois").AddPoint(59.328, 18.044);
+byte[] mvt = tile.Build();
+```
 
-## License
+## Supported geometry
 
-MIT
+- **Point** — markers, POIs, events
+- **LineString** — routes, tracks, paths
+- **Polygon** — zones, geofences, areas
+
+All methods take WGS84 coordinates and optional key/value attributes. Geometry that crosses tile boundaries just works.
+
+```csharp
+layer.AddPoint(lat, lng);
+layer.AddLineString(coords);
+layer.AddPolygon(ring);
+```
+
+MVT spec v2.1. .NET 10. One dependency (`Google.Protobuf`). MIT.
