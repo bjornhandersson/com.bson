@@ -6,7 +6,7 @@
 
 MvtNet is NOT a map server. It produces MVT tiles meant to be used as a **custom overlay layer** on top of a standard map (OpenStreetMap, Mapbox, etc.).
 
-The Lab API and UI exist solely as a test harness to exercise and visually verify the library.
+The Demo API and UI exist solely as a test harness to exercise and visually verify the library.
 
 ### What MvtNet does
 
@@ -37,11 +37,11 @@ MvtNet/
 │   └── MvtNet.csproj
 ├── MvtNet.Tests/               # Unit tests for the library
 │   └── MvtNet.Tests.csproj
-├── MVT.Lab/                    # Test harness — .NET 10 minimal API, serves /tiles/{z}/{x}/{y}
-│   └── MVT.Lab.csproj
-├── MVT.Lab.UI/                 # Test harness — Next.js + MapLibre GL JS, visualizes overlay
+├── MvtNet.Demo/                    # Test harness — .NET 10 minimal API, serves /tiles/{z}/{x}/{y}
+│   └── MvtNet.Demo.csproj
+├── MvtNet.Demo.UI/                 # Test harness — Next.js + MapLibre GL JS, visualizes overlay
 │   └── package.json
-├── .vscode/                    # VS Code debug config for MVT.Lab
+├── .vscode/                    # VS Code debug config for MvtNet.Demo
 │   ├── launch.json
 │   └── tasks.json
 └── MVT_INIT_PLAN.md
@@ -66,13 +66,13 @@ MvtNet/
 - [ ] 1. Create `MvtNet.sln`
 - [ ] 2. Create `MvtNet/` class library with `Proto/vector_tile.proto` + protobuf code gen
 - [ ] 3. Create `MvtNet.Tests/` test project, reference MvtNet
-- [ ] 4. Create `MVT.Lab/` minimal API, reference MvtNet, stub `GET /tiles/{z}/{x}/{y}`
-- [ ] 5. Create `MVT.Lab.UI/` Next.js app
+- [ ] 4. Create `MvtNet.Demo/` minimal API, reference MvtNet, stub `GET /tiles/{z}/{x}/{y}`
+- [ ] 5. Create `MvtNet.Demo.UI/` Next.js app
 - [ ] 6. Add MapLibre GL JS + free OSM raster base layer (`tile.openstreetmap.org`) for demo context
-- [ ] 7. Add custom MVT overlay layer pointed at Lab API
+- [ ] 7. Add custom MVT overlay layer pointed at Demo API
 - [ ] 8. Stub tiles return real MVT tile with X shape (encoded by MvtNet)
-- [ ] 9. Proxy `/tiles/*` → Lab API via Next.js rewrites
-- [ ] 10. Add `.vscode/launch.json` + `tasks.json` for debugging MVT.Lab
+- [ ] 9. Proxy `/tiles/*` → Demo API via Next.js rewrites
+- [ ] 10. Add `.vscode/launch.json` + `tasks.json` for debugging MvtNet.Demo
 - [ ] 11. Verify: map loads, all tiles hit backend, all render X shape
 
 ### Phase 2 — Core Encoding
@@ -80,7 +80,7 @@ MvtNet/
 - [ ] 12. Geometry encoding — MoveTo, LineTo, ClosePath, zigzag, delta
 - [ ] 13. Tag encoding — key/value dictionaries, index pairs
 - [ ] 14. Protobuf tile assembly + serialization
-- [ ] 15. Wire sample point (59.3281936, 18.0440866) into Lab API
+- [ ] 15. Wire sample point (59.3281936, 18.0440866) into Demo API
 - [ ] 16. Unit tests (tile math, zigzag, geometry commands, full roundtrip)
 - [ ] 17. Verify: point renders on Stockholm base map in UI
 
@@ -100,19 +100,19 @@ Stand up all three projects so the full pipeline works: UI → API → MvtNet li
 
 1. Create `MvtNet.sln` at the root
 2. Create `MvtNet/` class library (`net10.0`) with `Proto/vector_tile.proto` and protobuf code generation via `Google.Protobuf` + `Grpc.Tools`
-3. Create `MVT.Lab/` minimal API (`net10.0`), references MvtNet, serves `GET /tiles/{z}/{x}/{y}`
-4. Create `MVT.Lab.UI/` — Next.js (TypeScript) via `create-next-app`
+3. Create `MvtNet.Demo/` minimal API (`net10.0`), references MvtNet, serves `GET /tiles/{z}/{x}/{y}`
+4. Create `MvtNet.Demo.UI/` — Next.js (TypeScript) via `create-next-app`
 5. Add MapLibre GL JS for the map component (standard setup for rendering MVT overlay tiles)
 6. Standard base map (OpenStreetMap) as the background
-7. Custom MVT **overlay layer** sourced from Lab API on top of the base map
+7. Custom MVT **overlay layer** sourced from Demo API on top of the base map
 8. Stub tiles return a real MVT tile encoded by MvtNet containing an X shape (two crossing line segments centered in the tile) — confirms the full encoding pipeline works
-9. Next.js `rewrites` in `next.config.ts` to proxy `/tiles/*` → Lab API
+9. Next.js `rewrites` in `next.config.ts` to proxy `/tiles/*` → Demo API
 10. ~~Sidebar/toolbar to toggle layers~~ — deferred to Phase 2; Phase 1 is POC only
 
 ### How to run
 
-- `cd MVT.Lab.UI && npm run dev` → `http://localhost:3000`
-- Lab API: `dotnet run --project MVT.Lab` → `http://localhost:5000`
+- `cd MvtNet.Demo.UI && npm run dev` → `http://localhost:3000`
+- Demo API: `dotnet run --project MvtNet.Demo` → `http://localhost:5000`
 - Tile requests proxied: `localhost:3000/tiles/{z}/{x}/{y}` → `localhost:5000/tiles/{z}/{x}/{y}`
 
 ### Done when
@@ -127,7 +127,7 @@ Stand up all three projects so the full pipeline works: UI → API → MvtNet li
 ## Decisions
 
 - **X shape (Phase 1 stub):** Full tile extent (0,0 → 4096,4096), two LineString features in one layer
-- **Lab API transport:** HTTP only for dev (`http://localhost:5000`)
+- **Demo API transport:** HTTP only for dev (`http://localhost:5000`)
 - **Protobuf codegen:** Standard build-time generation via `Grpc.Tools` (`.proto` in project, C# generated on build)
 - **Test framework:** NUnit
 - **Next.js:** App Router (default), npm
@@ -150,12 +150,12 @@ Implement the actual MVT encoding in the library.
 2. Geometry encoding — MoveTo, LineTo, ClosePath with zigzag + delta encoding
 3. Tag encoding — key/value dictionary per layer, feature tags as index pairs
 4. Protobuf tile assembly — layers, features, serialization to bytes
-5. Hardcoded sample point in Lab API (59.3281936, 18.0440866)
+5. Hardcoded sample point in Demo API (59.3281936, 18.0440866)
 6. Unit tests — validate encoding against known-good MVT bytes (tile math, zigzag, geometry commands, full tile roundtrip)
 
 ### Done when
 
-- Lab API returns valid MVT tiles containing the sample point
+- Demo API returns valid MVT tiles containing the sample point
 - UI renders the point as an overlay on the Stockholm base map
 - Tests pass
 
