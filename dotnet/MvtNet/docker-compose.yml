@@ -1,0 +1,14 @@
+services:
+  api:
+    build: .
+    expose:
+      - "8080"
+
+  ui:
+    build: ./MvtNet.Demo.UI
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=http://api:8080
+    depends_on:
+      - api

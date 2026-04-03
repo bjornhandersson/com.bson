@@ -3,7 +3,94 @@ using MvtNet;
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-// Generate a 3000-point route: Stockholm → Norrköping (~200km)
+// ---------------------------------------------------------------------------
+// Generate 1,000,000 POIs: clusters around the world + 10,000 in Stockholm
+// ---------------------------------------------------------------------------
+var random = new Random(42);
+
+// World city clusters (~990,000 POIs spread across these)
+var clusters = new (double Lat, double Lng, double Radius, int Count, string Label)[]
+{
+    // Europe
+    (48.8566, 2.3522, 0.15, 30_000, "Paris"),
+    (51.5074, -0.1278, 0.15, 30_000, "London"),
+    (52.5200, 13.4050, 0.12, 25_000, "Berlin"),
+    (41.9028, 12.4964, 0.10, 20_000, "Rome"),
+    (40.4168, -3.7038, 0.12, 20_000, "Madrid"),
+    (55.6761, 12.5683, 0.08, 15_000, "Copenhagen"),
+    (60.1699, 24.9384, 0.08, 15_000, "Helsinki"),
+    (52.3676, 4.9041, 0.08, 15_000, "Amsterdam"),
+    (50.0755, 14.4378, 0.08, 12_000, "Prague"),
+    (47.4979, 19.0402, 0.08, 12_000, "Budapest"),
+    (38.7223, -9.1393, 0.10, 10_000, "Lisbon"),
+    (59.9139, 10.7522, 0.08, 10_000, "Oslo"),
+    // Asia
+    (35.6762, 139.6503, 0.20, 80_000, "Tokyo"),
+    (37.5665, 126.9780, 0.15, 50_000, "Seoul"),
+    (31.2304, 121.4737, 0.20, 60_000, "Shanghai"),
+    (39.9042, 116.4074, 0.20, 55_000, "Beijing"),
+    (22.3193, 114.1694, 0.10, 30_000, "Hong Kong"),
+    (1.3521, 103.8198, 0.05, 20_000, "Singapore"),
+    (13.7563, 100.5018, 0.15, 20_000, "Bangkok"),
+    (28.6139, 77.2090, 0.20, 35_000, "Delhi"),
+    (19.0760, 72.8777, 0.15, 30_000, "Mumbai"),
+    // Americas
+    (40.7128, -74.0060, 0.15, 55_000, "New York"),
+    (34.0522, -118.2437, 0.20, 45_000, "Los Angeles"),
+    (41.8781, -87.6298, 0.12, 30_000, "Chicago"),
+    (-23.5505, -46.6333, 0.20, 45_000, "São Paulo"),
+    (19.4326, -99.1332, 0.15, 35_000, "Mexico City"),
+    (-34.6037, -58.3816, 0.15, 30_000, "Buenos Aires"),
+    (49.2827, -123.1207, 0.10, 16_000, "Vancouver"),
+    // Africa & Middle East
+    (-33.9249, 18.4241, 0.12, 20_000, "Cape Town"),
+    (30.0444, 31.2357, 0.15, 25_000, "Cairo"),
+    (25.2048, 55.2708, 0.10, 15_000, "Dubai"),
+    (6.5244, 3.3792, 0.15, 20_000, "Lagos"),
+    (-1.2921, 36.8219, 0.10, 15_000, "Nairobi"),
+    // Oceania
+    (-33.8688, 151.2093, 0.15, 25_000, "Sydney"),
+    (-36.8485, 174.7633, 0.10, 15_000, "Auckland"),
+    // Stockholm — 10,000 dense POIs
+    (59.33, 18.07, 0.06, 10_000, "Stockholm"),
+};
+
+Console.Write("Generating 1M POIs...");
+var poiStore = new Dictionary<string, List<Poi>>();
+int totalGenerated = 0;
+
+foreach (var (cLat, cLng, radius, count, label) in clusters)
+{
+    for (int i = 0; i < count; i++)
+    {
+        // Gaussian-ish distribution around cluster center
+        double angle = random.NextDouble() * Math.PI * 2;
+        double dist = radius * Math.Sqrt(-2.0 * Math.Log(1.0 - random.NextDouble() * 0.9999));
+        double lat = Math.Clamp(cLat + dist * Math.Sin(angle), -85, 85);
+        double lng = cLng + dist * Math.Cos(angle);
+
+        string name = $"{label}-{i}";
+        string hash = Geohash.Encode(lat, lng, 7);
+
+        if (!poiStore.TryGetValue(hash, out var list))
+        {
+            list = new List<Poi>();
+            poiStore[hash] = list;
+        }
+
+        list.Add(new Poi(lat, lng, name));
+        totalGenerated++;
+    }
+}
+
+Console.WriteLine($" done. {totalGenerated:N0} POIs in {poiStore.Count:N0} geohash cells.");
+
+// Build a sorted array of geohash keys for fast prefix lookup
+var sortedHashes = poiStore.Keys.OrderBy(k => k, StringComparer.Ordinal).ToArray();
+
+// ---------------------------------------------------------------------------
+// Generate the Stockholm → Norrköping route
+// ---------------------------------------------------------------------------
 const int routePoints = 3000;
 const double startLat = 59.33,
     startLng = 18.04;
@@ -17,56 +104,9 @@ for (int i = 0; i < routePoints; i++)
     route[i] = (startLat + (endLat - startLat) * t, startLng + (endLng - startLng) * t);
 }
 
-// In-memory POI store keyed by geohash
-var poiStore = new Dictionary<string, List<Poi>>();
-
-var stockholmPois = new (double Lat, double Lng, string Name)[]
-{
-    (59.3293, 18.0686, "Kungliga Slottet"),
-    (59.3275, 18.0716, "Storkyrkan"),
-    (59.3252, 18.0707, "Riksdagshuset"),
-    (59.3326, 18.0649, "Kungsträdgården"),
-    (59.3350, 18.0597, "T-Centralen"),
-    (59.3190, 18.0686, "Södermalm"),
-    (59.3147, 18.0935, "Fotografiska"),
-    (59.3280, 18.0488, "Stadshuset"),
-    (59.3320, 18.1028, "Djurgården"),
-    (59.3289, 18.0924, "Vasamuseet"),
-    (59.3285, 18.0985, "Nordiska Museet"),
-    (59.3274, 18.1013, "ABBA Museet"),
-    (59.3233, 18.0565, "Medborgarplatsen"),
-    (59.3382, 18.0760, "Östermalms Saluhall"),
-    (59.3423, 18.0467, "Odenplan"),
-    (59.3090, 18.0790, "Hammarby Sjöstad"),
-    (59.3370, 18.0380, "Vasastan"),
-    (59.3456, 18.0559, "Roslagstull"),
-    (59.3180, 18.0567, "Hornstull"),
-    (59.3354, 18.0880, "Stureplan"),
-    (59.3500, 18.0220, "Solna centrum"),
-    (59.3100, 18.1100, "Nacka"),
-    (59.3600, 18.0000, "Sundbyberg"),
-    (59.3060, 18.0630, "Globen"),
-    (59.2850, 18.0750, "Farsta"),
-    (59.3660, 18.0050, "Ulriksdal"),
-    (59.3160, 18.0400, "Liljeholmen"),
-    (59.2980, 18.0350, "Fruängen"),
-    (59.3550, 18.1050, "Lidingö"),
-    (59.3400, 18.0300, "Sankt Eriksplan"),
-};
-
-foreach (var (lat, lng, name) in stockholmPois)
-{
-    // Store at precision 7 for fine-grained lookup
-    string hash = Geohash.Encode(lat, lng, 7);
-    if (!poiStore.TryGetValue(hash, out var list))
-    {
-        list = new List<Poi>();
-        poiStore[hash] = list;
-    }
-
-    list.Add(new Poi(lat, lng, name));
-}
-
+// ---------------------------------------------------------------------------
+// Tile endpoint
+// ---------------------------------------------------------------------------
 app.MapGet(
     "/tiles/{z:int}/{x:int}/{y:int}",
     (int z, int x, int y) =>
@@ -87,26 +127,40 @@ app.MapGet(
             startLng,
             new Dictionary<string, object> { ["name"] = "Stockholm" }
         );
-        points.AddPoint(endLat, endLng, new Dictionary<string, object> { ["name"] = "Norrköping" });
+        points.AddPoint(
+            endLat,
+            endLng,
+            new Dictionary<string, object> { ["name"] = "Norrköping" }
+        );
 
-        // POI layer — query via geohash prefixes
+        // POI layer — query via geohash prefix binary search
         var prefixes = TileGeohash.GetPrefixes(z, x, y);
         var pois = tileBuilder.Layer("pois");
 
         foreach (var prefix in prefixes)
         {
-            foreach (var (hash, poiList) in poiStore)
+            // Binary search for the first hash >= prefix
+            int lo = Array.BinarySearch(sortedHashes, prefix, StringComparer.Ordinal);
+            if (lo < 0)
             {
-                if (hash.StartsWith(prefix))
+                lo = ~lo;
+            }
+
+            for (int i = lo; i < sortedHashes.Length; i++)
+            {
+                string hash = sortedHashes[i];
+                if (!hash.StartsWith(prefix, StringComparison.Ordinal))
                 {
-                    foreach (var poi in poiList)
-                    {
-                        pois.AddPoint(
-                            poi.Lat,
-                            poi.Lng,
-                            new Dictionary<string, object> { ["name"] = poi.Name }
-                        );
-                    }
+                    break;
+                }
+
+                foreach (var poi in poiStore[hash])
+                {
+                    pois.AddPoint(
+                        poi.Lat,
+                        poi.Lng,
+                        new Dictionary<string, object> { ["name"] = poi.Name }
+                    );
                 }
             }
         }

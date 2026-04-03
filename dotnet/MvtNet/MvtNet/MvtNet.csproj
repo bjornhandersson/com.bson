@@ -13,10 +13,11 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.*" />
-    <PackageReference Include="Grpc.Tools" Version="2.*" PrivateAssets="all" />
+    <PackageReference Include="Grpc.Tools" Version="2.*" PrivateAssets="all" Condition="'$(SKIP_PROTOC)' != 'true'" />
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Condition="'$(SKIP_PROTOC)' != 'true'">
     <Protobuf Include="Proto/vector_tile.proto" CompileOutputs="true" GrpcServices="None" />
+    <Compile Remove="Generated/**" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="MvtNet.Tests" />
