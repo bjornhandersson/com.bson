@@ -158,11 +158,7 @@ public class LayerBuilder
 
         var tileCoords = ProjectAll(ring);
 
-        var feature = new Tile.Types.Feature
-        {
-            Id = _nextId++,
-            Type = Tile.Types.GeomType.Polygon,
-        };
+        var feature = new Tile.Types.Feature { Id = _nextId++, Type = Tile.Types.GeomType.Polygon };
 
         feature.Geometry.AddRange(GeometryEncoder.EncodePolygon(tileCoords));
 
@@ -182,15 +178,29 @@ public class LayerBuilder
     {
         var tileBounds = TileMath.GetTileBounds(_z, _x, _y);
 
-        double minLat = double.MaxValue, maxLat = double.MinValue;
-        double minLng = double.MaxValue, maxLng = double.MinValue;
+        double minLat = double.MaxValue,
+            maxLat = double.MinValue;
+        double minLng = double.MaxValue,
+            maxLng = double.MinValue;
 
         foreach (var (lat, lng) in coords)
         {
-            if (lat < minLat) { minLat = lat; }
-            if (lat > maxLat) { maxLat = lat; }
-            if (lng < minLng) { minLng = lng; }
-            if (lng > maxLng) { maxLng = lng; }
+            if (lat < minLat)
+            {
+                minLat = lat;
+            }
+            if (lat > maxLat)
+            {
+                maxLat = lat;
+            }
+            if (lng < minLng)
+            {
+                minLng = lng;
+            }
+            if (lng > maxLng)
+            {
+                maxLng = lng;
+            }
         }
 
         return maxLat >= tileBounds.South

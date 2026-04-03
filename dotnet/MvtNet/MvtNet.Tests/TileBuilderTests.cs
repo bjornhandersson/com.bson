@@ -116,7 +116,11 @@ public class TileBuilderTests
 
         // Point layer
         var points = builder.Layer("points");
-        points.AddPoint(59.3281936, 18.0440866, new Dictionary<string, object> { ["name"] = "Stockholm" });
+        points.AddPoint(
+            59.3281936,
+            18.0440866,
+            new Dictionary<string, object> { ["name"] = "Stockholm" }
+        );
 
         // LineString layer
         var tracks = builder.Layer("tracks");
@@ -147,7 +151,11 @@ public class TileBuilderTests
         var builder = new TileBuilder(Z, X, Y);
         var layer = builder.Layer("points");
 
-        layer.AddPoint(59.3281936, 18.0440866, new Dictionary<string, object> { ["name"] = "Stockholm" });
+        layer.AddPoint(
+            59.3281936,
+            18.0440866,
+            new Dictionary<string, object> { ["name"] = "Stockholm" }
+        );
         layer.AddPoint(59.3326, 18.0649, new Dictionary<string, object> { ["name"] = "Östermalm" });
         layer.AddPoint(59.3190, 18.0686, new Dictionary<string, object> { ["name"] = "Södermalm" });
 

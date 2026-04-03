@@ -11,9 +11,21 @@ app.MapGet(
 
         // Points — landmarks
         var points = tileBuilder.Layer("points");
-        points.AddPoint(59.3281936, 18.0440866, new Dictionary<string, object> { ["name"] = "Stockholm Central" });
-        points.AddPoint(59.3326, 18.0649, new Dictionary<string, object> { ["name"] = "Östermalm" });
-        points.AddPoint(59.3190, 18.0686, new Dictionary<string, object> { ["name"] = "Södermalm" });
+        points.AddPoint(
+            59.3281936,
+            18.0440866,
+            new Dictionary<string, object> { ["name"] = "Stockholm Central" }
+        );
+        points.AddPoint(
+            59.3326,
+            18.0649,
+            new Dictionary<string, object> { ["name"] = "Östermalm" }
+        );
+        points.AddPoint(
+            59.3190,
+            18.0686,
+            new Dictionary<string, object> { ["name"] = "Södermalm" }
+        );
         points.AddPoint(59.3340, 18.0300, new Dictionary<string, object> { ["name"] = "Norrmalm" });
 
         // LineString — a route through the city
