@@ -30,26 +30,29 @@ internal static class GeometryEncoder
             );
         }
 
-        var commands = new List<uint>(3 + (coords.Length - 1) * 2 + 1);
+        // Layout: MoveTo(1) + x + y + LineTo(1) + (n-1) * (dx + dy)
+        int count = 3 + 1 + (coords.Length - 1) * 2;
+        var commands = new uint[count];
+        int pos = 0;
 
         // MoveTo first point
-        commands.Add(CommandInteger(MoveToId, 1));
-        commands.Add(ZigZag(coords[0].X));
-        commands.Add(ZigZag(coords[0].Y));
+        commands[pos++] = CommandInteger(MoveToId, 1);
+        commands[pos++] = ZigZag(coords[0].X);
+        commands[pos++] = ZigZag(coords[0].Y);
 
         // LineTo remaining points (delta from previous)
-        commands.Add(CommandInteger(LineToId, (uint)(coords.Length - 1)));
+        commands[pos++] = CommandInteger(LineToId, (uint)(coords.Length - 1));
         int prevX = coords[0].X;
         int prevY = coords[0].Y;
         for (int i = 1; i < coords.Length; i++)
         {
-            commands.Add(ZigZag(coords[i].X - prevX));
-            commands.Add(ZigZag(coords[i].Y - prevY));
+            commands[pos++] = ZigZag(coords[i].X - prevX);
+            commands[pos++] = ZigZag(coords[i].Y - prevY);
             prevX = coords[i].X;
             prevY = coords[i].Y;
         }
 
-        return commands.ToArray();
+        return commands;
     }
 
     /// <summary>
@@ -66,29 +69,32 @@ internal static class GeometryEncoder
             );
         }
 
-        var commands = new List<uint>(3 + (ring.Length - 1) * 2 + 2);
+        // Layout: MoveTo(1) + x + y + LineTo(1) + (n-1) * (dx + dy) + ClosePath(1)
+        int count = 3 + 1 + (ring.Length - 1) * 2 + 1;
+        var commands = new uint[count];
+        int pos = 0;
 
         // MoveTo first point
-        commands.Add(CommandInteger(MoveToId, 1));
-        commands.Add(ZigZag(ring[0].X));
-        commands.Add(ZigZag(ring[0].Y));
+        commands[pos++] = CommandInteger(MoveToId, 1);
+        commands[pos++] = ZigZag(ring[0].X);
+        commands[pos++] = ZigZag(ring[0].Y);
 
         // LineTo remaining points (delta from previous)
-        commands.Add(CommandInteger(LineToId, (uint)(ring.Length - 1)));
+        commands[pos++] = CommandInteger(LineToId, (uint)(ring.Length - 1));
         int prevX = ring[0].X;
         int prevY = ring[0].Y;
         for (int i = 1; i < ring.Length; i++)
         {
-            commands.Add(ZigZag(ring[i].X - prevX));
-            commands.Add(ZigZag(ring[i].Y - prevY));
+            commands[pos++] = ZigZag(ring[i].X - prevX);
+            commands[pos++] = ZigZag(ring[i].Y - prevY);
             prevX = ring[i].X;
             prevY = ring[i].Y;
         }
 
         // ClosePath
-        commands.Add(CommandInteger(ClosePathId, 1));
+        commands[pos++] = CommandInteger(ClosePathId, 1);
 
-        return commands.ToArray();
+        return commands;
     }
 
     /// <summary>

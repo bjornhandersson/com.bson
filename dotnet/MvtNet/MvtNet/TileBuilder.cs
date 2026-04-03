@@ -49,10 +49,8 @@ public class TileBuilder
 public class LayerBuilder
 {
     private readonly string _name;
-    private readonly int _z;
-    private readonly int _x;
-    private readonly int _y;
     private readonly uint _extent;
+    private readonly TileProjectionContext _ctx;
     private readonly TagEncoder _tags = new();
     private readonly List<Tile.Types.Feature> _features = new();
     private ulong _nextId = 1;
@@ -62,10 +60,8 @@ public class LayerBuilder
     {
         _tile = tile;
         _name = name;
-        _z = z;
-        _x = x;
-        _y = y;
         _extent = extent;
+        _ctx = TileMath.CreateProjectionContext(z, x, y, extent);
     }
 
     /// <summary>
@@ -78,15 +74,17 @@ public class LayerBuilder
         IEnumerable<KeyValuePair<string, object>>? attributes = null
     )
     {
-        var coord = TileMath.ProjectPoint(lat, lng, _z, _x, _y, _extent);
-        if (coord is null)
+        var bounds = _ctx.Bounds;
+        if (lat < bounds.South || lat > bounds.North || lng < bounds.West || lng > bounds.East)
         {
             return this;
         }
 
+        var coord = TileMath.ProjectWithContext(lat, lng, _ctx);
+
         var feature = new Tile.Types.Feature { Id = _nextId++, Type = Tile.Types.GeomType.Point };
 
-        feature.Geometry.AddRange(GeometryEncoder.EncodePoint(coord.Value.X, coord.Value.Y));
+        feature.Geometry.AddRange(GeometryEncoder.EncodePoint(coord.X, coord.Y));
 
         if (attributes is not null)
         {
@@ -183,7 +181,7 @@ public class LayerBuilder
     /// </summary>
     private bool OverlapsTile(ReadOnlySpan<(double Lat, double Lng)> coords)
     {
-        var tileBounds = TileMath.GetTileBounds(_z, _x, _y);
+        var tileBounds = _ctx.Bounds;
 
         double minLat = double.MaxValue,
             maxLat = double.MinValue;
@@ -221,14 +219,7 @@ public class LayerBuilder
         var result = new TileCoord[coords.Length];
         for (int i = 0; i < coords.Length; i++)
         {
-            result[i] = TileMath.ProjectPointUnclamped(
-                coords[i].Lat,
-                coords[i].Lng,
-                _z,
-                _x,
-                _y,
-                _extent
-            );
+            result[i] = TileMath.ProjectWithContext(coords[i].Lat, coords[i].Lng, _ctx);
         }
 
         return result;

@@ -21,17 +21,26 @@ internal class TagEncoder
     /// </summary>
     public uint[] Encode(IEnumerable<KeyValuePair<string, object>> attributes)
     {
-        var tags = new List<uint>();
-
-        foreach (var (key, value) in attributes)
+        // Fast path for the common Dictionary case where Count is known
+        if (attributes is ICollection<KeyValuePair<string, object>> collection)
         {
-            int keyIndex = GetOrAddKey(key);
-            int valueIndex = GetOrAddValue(value);
-            tags.Add((uint)keyIndex);
-            tags.Add((uint)valueIndex);
+            var tags = new uint[collection.Count * 2];
+            int pos = 0;
+            foreach (var (key, value) in collection)
+            {
+                tags[pos++] = (uint)GetOrAddKey(key);
+                tags[pos++] = (uint)GetOrAddValue(value);
+            }
+            return tags;
         }
 
-        return tags.ToArray();
+        var tagList = new List<uint>();
+        foreach (var (key, value) in attributes)
+        {
+            tagList.Add((uint)GetOrAddKey(key));
+            tagList.Add((uint)GetOrAddValue(value));
+        }
+        return tagList.ToArray();
     }
 
     public IReadOnlyList<string> Keys => _keyList;
