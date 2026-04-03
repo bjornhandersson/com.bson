@@ -86,6 +86,20 @@ tile.Layer("zones").AddPolygon(new (double, double)[]
 byte[] mvt = tile.Build();
 ```
 
+### Geohash queries
+
+Got data indexed by geohash? `TileGeohash` tells you which prefixes to query for a given tile.
+
+```csharp
+// Get prefixes for WHERE geohash LIKE 'prefix%'
+var prefixes = TileGeohash.GetPrefixes(z, x, y);
+
+// Or a single range for WHERE geohash BETWEEN min AND max
+var range = TileGeohash.GetRange(z, x, y);
+```
+
+Works with any geohash-indexed store (MySQL, DynamoDB, etc.) — no PostGIS required.
+
 ### Serving tiles
 
 ```csharp

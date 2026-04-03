@@ -72,6 +72,20 @@ export default function Home() {
           "circle-stroke-width": 2,
         },
       });
+
+      // POIs (geohash-queried)
+      map.current!.addLayer({
+        id: "mvt-pois",
+        type: "circle",
+        source: "mvt-overlay",
+        "source-layer": "pois",
+        paint: {
+          "circle-radius": 5,
+          "circle-color": "#f59e0b",
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 1.5,
+        },
+      });
     });
 
     return () => {
