@@ -1,0 +1,39 @@
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: mvtnet
+      MYSQL_USER: mvtnet
+      MYSQL_PASSWORD: mvtnet
+      MYSQL_ROOT_PASSWORD: rootpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-umvtnet", "-pmvtnet"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: .
+    expose:
+      - "8080"
+    environment:
+      - MYSQL_CONNECTION=Server=db;Port=3306;Database=mvtnet;User=mvtnet;Password=mvtnet;AllowLoadLocalInfile=true
+    depends_on:
+      db:
+        condition: service_healthy
+
+  ui:
+    build: ./MvtNet.Demo.UI
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=http://api:8080
+    depends_on:
+      - api
+
+volumes:
+  mysql-data:

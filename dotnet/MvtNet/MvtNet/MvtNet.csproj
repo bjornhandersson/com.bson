@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackageId>MvtNet</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>bson</Authors>
+    <Description>Encode WGS84 geographic features into Mapbox Vector Tiles (MVT spec v2.1)</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>mvt;mapbox;vector-tiles;gis;maps</PackageTags>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.*" />
+    <PackageReference
+      Include="Grpc.Tools"
+      Version="2.*"
+      PrivateAssets="all"
+      Condition="'$(SKIP_PROTOC)' != 'true'"
+    />
+  </ItemGroup>
+  <ItemGroup Condition="'$(SKIP_PROTOC)' != 'true'">
+    <Protobuf Include="Proto/vector_tile.proto" CompileOutputs="true" GrpcServices="None" />
+    <Compile Remove="Generated/**" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="MvtNet.Tests" />
+  </ItemGroup>
+</Project>
