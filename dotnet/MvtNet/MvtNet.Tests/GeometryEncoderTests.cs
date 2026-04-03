@@ -31,4 +31,38 @@ public class GeometryEncoderTests
         // Last command should be ClosePath (7 & 0x7) | (1 << 3) = 15
         Assert.That(commands[^1], Is.EqualTo(15u));
     }
+
+    [Test]
+    public void EncodeLineString_TooFewPoints_Throws()
+    {
+        TileCoord[] coords = [new(10, 20)];
+
+        Assert.Throws<ArgumentException>(() => GeometryEncoder.EncodeLineString(coords));
+    }
+
+    [Test]
+    public void EncodePolygon_TooFewPoints_Throws()
+    {
+        TileCoord[] ring = [new(0, 0), new(100, 0)];
+
+        Assert.Throws<ArgumentException>(() => GeometryEncoder.EncodePolygon(ring));
+    }
+
+    [Test]
+    public void EncodePoint_AtOrigin()
+    {
+        var commands = GeometryEncoder.EncodePoint(0, 0);
+
+        // MoveTo(count=1)=9, zigzag(0)=0, zigzag(0)=0
+        Assert.That(commands, Is.EqualTo(new uint[] { 9, 0, 0 }));
+    }
+
+    [Test]
+    public void EncodePoint_NegativeCoords()
+    {
+        var commands = GeometryEncoder.EncodePoint(-10, -20);
+
+        // zigzag(-10)=19, zigzag(-20)=39
+        Assert.That(commands, Is.EqualTo(new uint[] { 9, 19, 39 }));
+    }
 }

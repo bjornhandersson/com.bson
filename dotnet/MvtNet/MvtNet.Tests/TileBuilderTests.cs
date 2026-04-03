@@ -12,17 +12,15 @@ public class TileBuilderTests
     [Test]
     public void Build_Point_ProducesValidTile()
     {
-        var builder = new TileBuilder(Z, X, Y);
-        var layer = builder.Layer("points");
-        bool added = layer.AddPoint(
-            59.3281936,
-            18.0440866,
-            new Dictionary<string, object> { ["name"] = "Stockholm" }
-        );
+        var bytes = new TileBuilder(Z, X, Y)
+            .Layer("points")
+            .AddPoint(
+                59.3281936,
+                18.0440866,
+                new Dictionary<string, object> { ["name"] = "Stockholm" }
+            )
+            .Build();
 
-        Assert.That(added, Is.True);
-
-        var bytes = builder.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
 
         Assert.That(tile.Layers, Has.Count.EqualTo(1));
@@ -39,22 +37,17 @@ public class TileBuilderTests
     public void Build_LineString_ProducesValidTile()
     {
         var builder = new TileBuilder(Z, X, Y);
-        var layer = builder.Layer("tracks");
 
         // A walk from Norrmalm → Stockholm center → Östermalm
-        (double Lat, double Lng)[] route =
-        [
-            (59.3340, 18.0300),
-            (59.3281936, 18.0440866),
-            (59.3326, 18.0649),
-        ];
-
-        bool added = layer.AddLineString(
-            route,
+        builder.Layer("tracks").AddLineString(
+            new (double, double)[]
+            {
+                (59.3340, 18.0300),
+                (59.3281936, 18.0440866),
+                (59.3326, 18.0649),
+            },
             new Dictionary<string, object> { ["name"] = "Walk", ["distance"] = 2.5 }
         );
-
-        Assert.That(added, Is.True);
 
         var bytes = builder.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
@@ -76,22 +69,21 @@ public class TileBuilderTests
     public void Build_Polygon_ProducesValidTile()
     {
         var builder = new TileBuilder(Z, X, Y);
-        var layer = builder.Layer("geofences");
 
         // Triangle: Norrmalm → Östermalm → Södermalm (ClosePath closes it)
-        (double Lat, double Lng)[] ring =
-        [
-            (59.3340, 18.0300),
-            (59.3326, 18.0649),
-            (59.3190, 18.0686),
-        ];
-
-        bool added = layer.AddPolygon(
-            ring,
-            new Dictionary<string, object> { ["name"] = "Central Stockholm", ["restricted"] = true }
+        builder.Layer("geofences").AddPolygon(
+            new (double, double)[]
+            {
+                (59.3340, 18.0300),
+                (59.3326, 18.0649),
+                (59.3190, 18.0686),
+            },
+            new Dictionary<string, object>
+            {
+                ["name"] = "Central Stockholm",
+                ["restricted"] = true,
+            }
         );
-
-        Assert.That(added, Is.True);
 
         var bytes = builder.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
@@ -114,24 +106,18 @@ public class TileBuilderTests
     {
         var builder = new TileBuilder(Z, X, Y);
 
-        // Point layer
-        var points = builder.Layer("points");
-        points.AddPoint(
+        builder.Layer("points").AddPoint(
             59.3281936,
             18.0440866,
             new Dictionary<string, object> { ["name"] = "Stockholm" }
         );
 
-        // LineString layer
-        var tracks = builder.Layer("tracks");
-        tracks.AddLineString(
+        builder.Layer("tracks").AddLineString(
             new (double, double)[] { (59.3340, 18.0300), (59.3326, 18.0649) },
             new Dictionary<string, object> { ["name"] = "Route A" }
         );
 
-        // Polygon layer
-        var geofences = builder.Layer("geofences");
-        geofences.AddPolygon(
+        builder.Layer("geofences").AddPolygon(
             new (double, double)[] { (59.3340, 18.0300), (59.3326, 18.0649), (59.3190, 18.0686) },
             new Dictionary<string, object> { ["name"] = "Zone 1" }
         );
@@ -149,15 +135,12 @@ public class TileBuilderTests
     public void Build_MultipleFeaturesInSameLayer()
     {
         var builder = new TileBuilder(Z, X, Y);
-        var layer = builder.Layer("points");
 
-        layer.AddPoint(
-            59.3281936,
-            18.0440866,
-            new Dictionary<string, object> { ["name"] = "Stockholm" }
-        );
-        layer.AddPoint(59.3326, 18.0649, new Dictionary<string, object> { ["name"] = "Östermalm" });
-        layer.AddPoint(59.3190, 18.0686, new Dictionary<string, object> { ["name"] = "Södermalm" });
+        builder
+            .Layer("points")
+            .AddPoint(59.3281936, 18.0440866, new Dictionary<string, object> { ["name"] = "Stockholm" })
+            .AddPoint(59.3326, 18.0649, new Dictionary<string, object> { ["name"] = "Östermalm" })
+            .AddPoint(59.3190, 18.0686, new Dictionary<string, object> { ["name"] = "Södermalm" });
 
         var bytes = builder.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
@@ -174,10 +157,7 @@ public class TileBuilderTests
     public void Build_PointOutsideTile_NotAdded()
     {
         var builder = new TileBuilder(10, 0, 0);
-        var layer = builder.Layer("points");
-        bool added = layer.AddPoint(59.3281936, 18.0440866);
-
-        Assert.That(added, Is.False);
+        builder.Layer("points").AddPoint(59.3281936, 18.0440866);
 
         var bytes = builder.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
@@ -186,30 +166,115 @@ public class TileBuilderTests
     }
 
     [Test]
-    public void Build_LineStringTooFewPointsInTile_NotAdded()
+    public void Build_LineStringOutsideTile_NotAdded()
     {
         var builder = new TileBuilder(10, 0, 0);
-        var layer = builder.Layer("tracks");
-
-        // Both points outside tile 0/0 at z10
-        bool added = layer.AddLineString(
+        builder.Layer("tracks").AddLineString(
             new (double, double)[] { (59.3340, 18.0300), (59.3326, 18.0649) }
         );
 
-        Assert.That(added, Is.False);
+        var bytes = builder.Build();
+        var tile = Tile.Parser.ParseFrom(bytes);
+
+        Assert.That(tile.Layers[0].Features, Has.Count.EqualTo(0));
     }
 
     [Test]
-    public void Build_PolygonTooFewPointsInTile_NotAdded()
+    public void Build_PolygonOutsideTile_NotAdded()
     {
         var builder = new TileBuilder(10, 0, 0);
-        var layer = builder.Layer("geofences");
-
-        // All points outside tile 0/0 at z10
-        bool added = layer.AddPolygon(
+        builder.Layer("geofences").AddPolygon(
             new (double, double)[] { (59.3340, 18.0300), (59.3326, 18.0649), (59.3190, 18.0686) }
         );
 
-        Assert.That(added, Is.False);
+        var bytes = builder.Build();
+        var tile = Tile.Parser.ParseFrom(bytes);
+
+        Assert.That(tile.Layers[0].Features, Has.Count.EqualTo(0));
+    }
+
+    [Test]
+    public void Build_EmptyTile_ProducesValidBytes()
+    {
+        var builder = new TileBuilder(Z, X, Y);
+        builder.Layer("empty");
+
+        var bytes = builder.Build();
+        var tile = Tile.Parser.ParseFrom(bytes);
+
+        Assert.That(tile.Layers, Has.Count.EqualTo(1));
+        Assert.That(tile.Layers[0].Features, Has.Count.EqualTo(0));
+    }
+
+    [Test]
+    public void Build_FluentChaining_ProducesValidTile()
+    {
+        var bytes = new TileBuilder(Z, X, Y)
+            .Layer("pois")
+            .AddPoint(59.3281936, 18.0440866)
+            .AddPoint(59.3326, 18.0649)
+            .AddPoint(59.3190, 18.0686)
+            .Build();
+
+        var tile = Tile.Parser.ParseFrom(bytes);
+
+        Assert.That(tile.Layers, Has.Count.EqualTo(1));
+        Assert.That(tile.Layers[0].Features, Has.Count.EqualTo(3));
+    }
+
+    [Test]
+    public void Build_LineStringCrossingTileBoundary_Rendered()
+    {
+        // z14 tile 9013/4818 contains Stockholm center
+        // The line extends well beyond the tile in both directions
+        int z = 14;
+        int x = 9013;
+        int y = 4818;
+
+        var builder = new TileBuilder(z, x, y);
+
+        builder.Layer("tracks").AddLineString(
+            new (double, double)[]
+            {
+                (59.34, 17.90), // west of tile
+                (59.32, 18.20), // east of tile
+            }
+        );
+
+        var bytes = builder.Build();
+        var tile = Tile.Parser.ParseFrom(bytes);
+
+        // The line overlaps the tile so it should be included
+        Assert.That(tile.Layers[0].Features, Has.Count.EqualTo(1));
+
+        var geom = tile.Layers[0].Features[0].Geometry;
+        Assert.That(geom, Has.Count.GreaterThan(0));
+    }
+
+    [Test]
+    public void Build_PolygonCrossingTileBoundary_Rendered()
+    {
+        int z = 14;
+        int x = 9013;
+        int y = 4818;
+
+        var builder = new TileBuilder(z, x, y);
+
+        // Polygon larger than the tile
+        builder.Layer("zones").AddPolygon(
+            new (double, double)[]
+            {
+                (59.35, 17.90),
+                (59.35, 18.20),
+                (59.30, 18.20),
+                (59.30, 17.90),
+            }
+        );
+
+        var bytes = builder.Build();
+        var tile = Tile.Parser.ParseFrom(bytes);
+
+        Assert.That(tile.Layers[0].Features, Has.Count.EqualTo(1));
+        Assert.That(tile.Layers[0].Features[0].Type, Is.EqualTo(Tile.Types.GeomType.Polygon));
     }
 }

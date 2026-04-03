@@ -26,7 +26,7 @@ public class TileBuilder
     {
         if (!_layers.TryGetValue(name, out var layer))
         {
-            layer = new LayerBuilder(name, _z, _x, _y, _extent);
+            layer = new LayerBuilder(this, name, _z, _x, _y, _extent);
             _layers[name] = layer;
         }
 
@@ -39,7 +39,7 @@ public class TileBuilder
 
         foreach (var layer in _layers.Values)
         {
-            tile.Layers.Add(layer.Build());
+            tile.Layers.Add(layer.BuildLayer());
         }
 
         return tile.ToByteArray();
@@ -57,8 +57,11 @@ public class LayerBuilder
     private readonly List<Tile.Types.Feature> _features = new();
     private ulong _nextId = 1;
 
-    internal LayerBuilder(string name, int z, int x, int y, uint extent)
+    private readonly TileBuilder _tile;
+
+    internal LayerBuilder(TileBuilder tile, string name, int z, int x, int y, uint extent)
     {
+        _tile = tile;
         _name = name;
         _z = z;
         _x = x;
@@ -68,9 +71,9 @@ public class LayerBuilder
 
     /// <summary>
     /// Adds a point feature at the given WGS84 coordinate.
-    /// Returns false if the point is outside this tile.
+    /// Silently skipped if the point is outside this tile.
     /// </summary>
-    public bool AddPoint(
+    public LayerBuilder AddPoint(
         double lat,
         double lng,
         IEnumerable<KeyValuePair<string, object>>? attributes = null
@@ -79,7 +82,7 @@ public class LayerBuilder
         var coord = TileMath.ProjectPoint(lat, lng, _z, _x, _y, _extent);
         if (coord is null)
         {
-            return false;
+            return this;
         }
 
         var feature = new Tile.Types.Feature { Id = _nextId++, Type = Tile.Types.GeomType.Point };
@@ -92,28 +95,28 @@ public class LayerBuilder
         }
 
         _features.Add(feature);
-        return true;
+        return this;
     }
 
     /// <summary>
     /// Adds a LineString feature from WGS84 coordinates.
     /// All coordinates are projected (even outside tile bounds) so segments crossing
-    /// tile boundaries render correctly. Returns false if the geometry doesn't
+    /// tile boundaries render correctly. Silently skipped if the geometry doesn't
     /// overlap the tile at all.
     /// </summary>
-    public bool AddLineString(
+    public LayerBuilder AddLineString(
         ReadOnlySpan<(double Lat, double Lng)> coords,
         IEnumerable<KeyValuePair<string, object>>? attributes = null
     )
     {
         if (coords.Length < 2)
         {
-            return false;
+            return this;
         }
 
         if (!OverlapsTile(coords))
         {
-            return false;
+            return this;
         }
 
         var tileCoords = ProjectAll(coords);
@@ -132,7 +135,7 @@ public class LayerBuilder
         }
 
         _features.Add(feature);
-        return true;
+        return this;
     }
 
     /// <summary>
@@ -141,19 +144,19 @@ public class LayerBuilder
     /// All coordinates are projected (even outside tile bounds) so polygons crossing
     /// tile boundaries render correctly.
     /// </summary>
-    public bool AddPolygon(
+    public LayerBuilder AddPolygon(
         ReadOnlySpan<(double Lat, double Lng)> ring,
         IEnumerable<KeyValuePair<string, object>>? attributes = null
     )
     {
         if (ring.Length < 3)
         {
-            return false;
+            return this;
         }
 
         if (!OverlapsTile(ring))
         {
-            return false;
+            return this;
         }
 
         var tileCoords = ProjectAll(ring);
@@ -168,7 +171,7 @@ public class LayerBuilder
         }
 
         _features.Add(feature);
-        return true;
+        return this;
     }
 
     /// <summary>
@@ -227,7 +230,12 @@ public class LayerBuilder
         return result;
     }
 
-    internal Tile.Types.Layer Build()
+    /// <summary>
+    /// Builds the tile. Shortcut for calling Build() on the parent TileBuilder.
+    /// </summary>
+    public byte[] Build() => _tile.Build();
+
+    internal Tile.Types.Layer BuildLayer()
     {
         var layer = new Tile.Types.Layer
         {
