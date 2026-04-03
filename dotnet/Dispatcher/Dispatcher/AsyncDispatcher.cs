@@ -2,9 +2,9 @@ using System;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using bson.Dispatcher.Hash;
+using Bson.Dispatcher.Hash;
 
-namespace bson.Dispatcher
+namespace Bson.Dispatcher
 {
     public class AsyncDispatcher : IAsyncDispatcher
     {

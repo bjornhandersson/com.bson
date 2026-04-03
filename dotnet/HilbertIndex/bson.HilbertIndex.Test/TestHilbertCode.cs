@@ -3,7 +3,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace bson.HilbertIndex.Test
+namespace Bson.HilbertIndex.Test
 {
     [TestFixture]
     public class Tests

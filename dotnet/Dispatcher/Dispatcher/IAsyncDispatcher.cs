@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace bson.Dispatcher
+namespace Bson.Dispatcher
 {
     public interface IAsyncDispatcher : IDisposable, IAsyncDisposable
     {

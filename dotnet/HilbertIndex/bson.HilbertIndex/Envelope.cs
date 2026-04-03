@@ -1,6 +1,6 @@
 using System;
 
-namespace bson.HilbertIndex
+namespace Bson.HilbertIndex
 {
     public class Envelope
     {

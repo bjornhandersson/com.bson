@@ -1,6 +1,6 @@
 using System;
 
-namespace bson.Dispatcher
+namespace Bson.Dispatcher
 {
     public class DispatcherOptions
     {

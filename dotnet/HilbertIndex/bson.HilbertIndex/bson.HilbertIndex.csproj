@@ -18,7 +18,7 @@
 
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
-    <_Parameter1>bson.HilbertIndex.Test</_Parameter1>
+    <_Parameter1>Bson.HilbertIndex.Test</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
 

@@ -1,4 +1,4 @@
-namespace bson.Dispatcher.Hash
+namespace Bson.Dispatcher.Hash
 {
     public class FNV1a : IHashGenerator
     {

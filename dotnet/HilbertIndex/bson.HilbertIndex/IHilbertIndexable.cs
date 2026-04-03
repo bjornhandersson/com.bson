@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace bson.HilbertIndex
+namespace Bson.HilbertIndex
 {
     public interface IHilbertIndexable
     {

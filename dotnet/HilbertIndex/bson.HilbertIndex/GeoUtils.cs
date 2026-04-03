@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 
-namespace bson.HilbertIndex
+namespace Bson.HilbertIndex
 {
      internal static class GeoUtils
     {

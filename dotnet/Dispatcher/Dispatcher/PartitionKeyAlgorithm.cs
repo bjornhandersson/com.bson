@@ -1,4 +1,4 @@
-namespace bson.Dispatcher
+namespace Bson.Dispatcher
 {
     public enum PartitionKeyAlgorithm
     {

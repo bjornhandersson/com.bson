@@ -1,4 +1,4 @@
-namespace bson.Dispatcher.Hash
+namespace Bson.Dispatcher.Hash
 {
     public interface IHashGenerator
     {

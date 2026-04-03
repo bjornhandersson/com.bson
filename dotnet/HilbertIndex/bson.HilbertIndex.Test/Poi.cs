@@ -1,10 +1,10 @@
 using NUnit.Framework;
-using bson.HilbertIndex;
+using Bson.HilbertIndex;
 using System;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace bson.HilbertIndex.Test
+namespace Bson.HilbertIndex.Test
 {
     public class Poi : IHilbertIndexable
     {

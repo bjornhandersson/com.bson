@@ -1,5 +1,5 @@
 using System;
-namespace bson.HilbertIndex
+namespace Bson.HilbertIndex
 {
     /// <summary>
     /// Box in 2d space

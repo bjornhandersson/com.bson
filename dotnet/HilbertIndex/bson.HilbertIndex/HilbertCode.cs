@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace bson.HilbertIndex
+namespace Bson.HilbertIndex
 {
     /// <summary>
     /// Class containing various utility methods for translating 2D coordinates to Hilbert indices

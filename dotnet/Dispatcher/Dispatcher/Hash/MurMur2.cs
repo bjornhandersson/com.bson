@@ -1,6 +1,6 @@
 using System;
 
-namespace bson.Dispatcher.Hash
+namespace Bson.Dispatcher.Hash
 {
     public class MurmurHash2 : IHashGenerator
     {

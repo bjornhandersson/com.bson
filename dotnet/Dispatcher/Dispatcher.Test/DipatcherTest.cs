@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using bson.Dispatcher.Hash;
+using Bson.Dispatcher.Hash;
 using FluentAssertions;
 
-namespace bson.Dispatcher.Test
+namespace Bson.Dispatcher.Test
 {
     public class AsyncDispatcherTest
     {
