@@ -82,7 +82,15 @@ public class TileMathTests
         // Find the correct tile at z18
         double n = Math.Pow(2, 18);
         int x = (int)((lng + 180.0) / 360.0 * n);
-        int y = (int)((1.0 - Math.Log(Math.Tan(lat * Math.PI / 180.0) + 1.0 / Math.Cos(lat * Math.PI / 180.0)) / Math.PI) / 2.0 * n);
+        int y = (int)(
+            (
+                1.0
+                - Math.Log(Math.Tan(lat * Math.PI / 180.0) + 1.0 / Math.Cos(lat * Math.PI / 180.0))
+                    / Math.PI
+            )
+            / 2.0
+            * n
+        );
 
         var coord = TileMath.ProjectPoint(lat, lng, 18, x, y);
 

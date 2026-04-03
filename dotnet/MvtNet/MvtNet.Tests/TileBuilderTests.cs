@@ -39,15 +39,17 @@ public class TileBuilderTests
         var builder = new TileBuilder(Z, X, Y);
 
         // A walk from Norrmalm → Stockholm center → Östermalm
-        builder.Layer("tracks").AddLineString(
-            new (double, double)[]
-            {
-                (59.3340, 18.0300),
-                (59.3281936, 18.0440866),
-                (59.3326, 18.0649),
-            },
-            new Dictionary<string, object> { ["name"] = "Walk", ["distance"] = 2.5 }
-        );
+        builder
+            .Layer("tracks")
+            .AddLineString(
+                new (double, double)[]
+                {
+                    (59.3340, 18.0300),
+                    (59.3281936, 18.0440866),
+                    (59.3326, 18.0649),
+                },
+                new Dictionary<string, object> { ["name"] = "Walk", ["distance"] = 2.5 }
+            );
 
         var bytes = builder.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
@@ -71,19 +73,21 @@ public class TileBuilderTests
         var builder = new TileBuilder(Z, X, Y);
 
         // Triangle: Norrmalm → Östermalm → Södermalm (ClosePath closes it)
-        builder.Layer("geofences").AddPolygon(
-            new (double, double)[]
-            {
-                (59.3340, 18.0300),
-                (59.3326, 18.0649),
-                (59.3190, 18.0686),
-            },
-            new Dictionary<string, object>
-            {
-                ["name"] = "Central Stockholm",
-                ["restricted"] = true,
-            }
-        );
+        builder
+            .Layer("geofences")
+            .AddPolygon(
+                new (double, double)[]
+                {
+                    (59.3340, 18.0300),
+                    (59.3326, 18.0649),
+                    (59.3190, 18.0686),
+                },
+                new Dictionary<string, object>
+                {
+                    ["name"] = "Central Stockholm",
+                    ["restricted"] = true,
+                }
+            );
 
         var bytes = builder.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
@@ -106,21 +110,32 @@ public class TileBuilderTests
     {
         var builder = new TileBuilder(Z, X, Y);
 
-        builder.Layer("points").AddPoint(
-            59.3281936,
-            18.0440866,
-            new Dictionary<string, object> { ["name"] = "Stockholm" }
-        );
+        builder
+            .Layer("points")
+            .AddPoint(
+                59.3281936,
+                18.0440866,
+                new Dictionary<string, object> { ["name"] = "Stockholm" }
+            );
 
-        builder.Layer("tracks").AddLineString(
-            new (double, double)[] { (59.3340, 18.0300), (59.3326, 18.0649) },
-            new Dictionary<string, object> { ["name"] = "Route A" }
-        );
+        builder
+            .Layer("tracks")
+            .AddLineString(
+                new (double, double)[] { (59.3340, 18.0300), (59.3326, 18.0649) },
+                new Dictionary<string, object> { ["name"] = "Route A" }
+            );
 
-        builder.Layer("geofences").AddPolygon(
-            new (double, double)[] { (59.3340, 18.0300), (59.3326, 18.0649), (59.3190, 18.0686) },
-            new Dictionary<string, object> { ["name"] = "Zone 1" }
-        );
+        builder
+            .Layer("geofences")
+            .AddPolygon(
+                new (double, double)[]
+                {
+                    (59.3340, 18.0300),
+                    (59.3326, 18.0649),
+                    (59.3190, 18.0686),
+                },
+                new Dictionary<string, object> { ["name"] = "Zone 1" }
+            );
 
         var bytes = builder.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
@@ -138,7 +153,11 @@ public class TileBuilderTests
 
         builder
             .Layer("points")
-            .AddPoint(59.3281936, 18.0440866, new Dictionary<string, object> { ["name"] = "Stockholm" })
+            .AddPoint(
+                59.3281936,
+                18.0440866,
+                new Dictionary<string, object> { ["name"] = "Stockholm" }
+            )
             .AddPoint(59.3326, 18.0649, new Dictionary<string, object> { ["name"] = "Östermalm" })
             .AddPoint(59.3190, 18.0686, new Dictionary<string, object> { ["name"] = "Södermalm" });
 
@@ -169,9 +188,9 @@ public class TileBuilderTests
     public void Build_LineStringOutsideTile_NotAdded()
     {
         var builder = new TileBuilder(10, 0, 0);
-        builder.Layer("tracks").AddLineString(
-            new (double, double)[] { (59.3340, 18.0300), (59.3326, 18.0649) }
-        );
+        builder
+            .Layer("tracks")
+            .AddLineString(new (double, double)[] { (59.3340, 18.0300), (59.3326, 18.0649) });
 
         var bytes = builder.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
@@ -183,9 +202,16 @@ public class TileBuilderTests
     public void Build_PolygonOutsideTile_NotAdded()
     {
         var builder = new TileBuilder(10, 0, 0);
-        builder.Layer("geofences").AddPolygon(
-            new (double, double)[] { (59.3340, 18.0300), (59.3326, 18.0649), (59.3190, 18.0686) }
-        );
+        builder
+            .Layer("geofences")
+            .AddPolygon(
+                new (double, double)[]
+                {
+                    (59.3340, 18.0300),
+                    (59.3326, 18.0649),
+                    (59.3190, 18.0686),
+                }
+            );
 
         var bytes = builder.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
@@ -233,13 +259,15 @@ public class TileBuilderTests
 
         var builder = new TileBuilder(z, x, y);
 
-        builder.Layer("tracks").AddLineString(
-            new (double, double)[]
-            {
-                (59.34, 17.90), // west of tile
-                (59.32, 18.20), // east of tile
-            }
-        );
+        builder
+            .Layer("tracks")
+            .AddLineString(
+                new (double, double)[]
+                {
+                    (59.34, 17.90), // west of tile
+                    (59.32, 18.20), // east of tile
+                }
+            );
 
         var bytes = builder.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
@@ -261,15 +289,17 @@ public class TileBuilderTests
         var builder = new TileBuilder(z, x, y);
 
         // Polygon larger than the tile
-        builder.Layer("zones").AddPolygon(
-            new (double, double)[]
-            {
-                (59.35, 17.90),
-                (59.35, 18.20),
-                (59.30, 18.20),
-                (59.30, 17.90),
-            }
-        );
+        builder
+            .Layer("zones")
+            .AddPolygon(
+                new (double, double)[]
+                {
+                    (59.35, 17.90),
+                    (59.35, 18.20),
+                    (59.30, 18.20),
+                    (59.30, 17.90),
+                }
+            );
 
         var bytes = builder.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
