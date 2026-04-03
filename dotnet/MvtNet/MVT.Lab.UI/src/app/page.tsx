@@ -48,13 +48,15 @@ export default function Home() {
       });
 
       map.current!.addLayer({
-        id: "mvt-lines",
-        type: "line",
+        id: "mvt-points",
+        type: "circle",
         source: "mvt-overlay",
-        "source-layer": "stub",
+        "source-layer": "points",
         paint: {
-          "line-color": "#ff0000",
-          "line-width": 2,
+          "circle-radius": 8,
+          "circle-color": "#ff0000",
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 2,
         },
       });
     });
