@@ -1,39 +1,35 @@
 # MvtNet
 
-WGS84 coordinates in, [MVT](https://github.com/mapbox/vector-tile-spec) bytes out. That's it.
+Encode [Mapbox Vector Tiles](https://github.com/mapbox/vector-tile-spec) from plain C#. No GIS stack, no PostGIS, no Mapnik.
 
 ```
 dotnet add package MvtNet
 ```
 
-## Quick start
-
 ```csharp
 var tile = new TileBuilder(z, x, y);
-tile.Layer("pois").AddPoint(59.328, 18.044);
-byte[] mvt = tile.Build();
+tile.Layer("trucks").AddPoint(lat, lng, new() { ["speed"] = 82.5 });
+return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
 ```
 
-## Examples
+Projection, clipping, and encoding happen automatically.
 
-### Delivery fleet tracker
-
-Show live vehicle positions, each with speed and status. The frontend renders
-them differently based on attributes — MvtNet just encodes whatever you throw at it.
+## Show 100k delivery trucks on a map
 
 ```csharp
 app.MapGet("/tiles/{z:int}/{x:int}/{y:int}", async (int z, int x, int y, FleetDb db) =>
 {
-    var vehicles = await db.GetVehiclesInTile(z, x, y);
-    var layer = new TileBuilder(z, x, y).Layer("vehicles");
+    var prefixes = TileGeohash.GetPrefixes(z, x, y);  // geohash → SQL
+    var vehicles = await db.GetByGeohashPrefixes(prefixes);
 
+    var layer = new TileBuilder(z, x, y).Layer("vehicles");
     foreach (var v in vehicles)
     {
         layer.AddPoint(v.Lat, v.Lng, new Dictionary<string, object>
         {
             ["id"] = v.Id,
             ["speed"] = v.Speed,
-            ["status"] = v.Status, // "delivering", "idle", "returning"
+            ["status"] = v.Status,
         });
     }
 
@@ -41,10 +37,12 @@ app.MapGet("/tiles/{z:int}/{x:int}/{y:int}", async (int z, int x, int y, FleetDb
 });
 ```
 
-### GPS track replay
+`TileGeohash.GetPrefixes` turns a tile into `WHERE geohash LIKE 'u6s%'` queries.
+Works with MySQL, Postgres, DynamoDB — anything with a geohash column.
 
-Encode a recorded GPS track as a LineString. MvtNet clips it to tile boundaries
-automatically — a track crossing 50 tiles only encodes the visible segment per tile.
+## Draw a GPS track across the country
+
+A track might span 200 tiles. Each tile only encodes its visible segment — clipping is automatic.
 
 ```csharp
 var tile = new TileBuilder(z, x, y);
@@ -57,10 +55,9 @@ tile.Layer("track").AddLineString(track, new Dictionary<string, object>
 });
 ```
 
-### Geofence zones
+## Mark a no-fly zone
 
-Draw delivery zones, restricted areas, or coverage polygons. Ring coordinates
-don't need to repeat the first point — MvtNet closes the ring for you.
+Ring coordinates don't need to repeat the first point — MvtNet closes the ring.
 
 ```csharp
 var tile = new TileBuilder(z, x, y);
@@ -78,10 +75,9 @@ tile.Layer("zones").AddPolygon(new (double, double)[]
 });
 ```
 
-### Geohash-indexed database queries
+## Query millions of rows without PostGIS
 
-Got millions of rows with a geohash column? `TileGeohash` gives you the exact
-prefixes to query — turns a tile request into a fast `WHERE geohash LIKE 'prefix%'` scan.
+Got a geohash column? `TileGeohash` gives you the exact prefixes to query — turns a tile request into a fast index scan.
 
 ```csharp
 app.MapGet("/tiles/{z:int}/{x:int}/{y:int}", async (int z, int x, int y, DbConnection db) =>
@@ -109,5 +105,9 @@ app.MapGet("/tiles/{z:int}/{x:int}/{y:int}", async (int z, int x, int y, DbConne
 });
 ```
 
-Works with any geohash-indexed store (MySQL, Postgres, DynamoDB) — no PostGIS required.
+## What it handles for you
 
+- **Projection** — WGS84 lat/lng to tile pixel coordinates
+- **Clipping** — lines crossing tile boundaries are cut cleanly
+- **Encoding** — MVT spec v2.1 protobuf, delta-encoded geometry, interned tags
+- **Geohash bridge** — tile z/x/y to geohash prefixes for indexed DB queries
