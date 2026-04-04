@@ -35,23 +35,46 @@ export default function Home() {
           },
         ],
       },
-      center: [17.1, 58.96], // Midpoint Stockholm – Norrköping
+      center: [17.1, 58.96],
       zoom: 8,
     });
 
     map.current.on("load", () => {
-      map.current!.addSource("mvt-overlay", {
+      map.current!.addSource("mvt", {
         type: "vector",
         tiles: [window.location.origin + "/tiles/{z}/{x}/{y}"],
         minzoom: 0,
         maxzoom: 14,
       });
 
-      // Route
+      // Lake polygon
       map.current!.addLayer({
-        id: "mvt-route",
+        id: "areas-fill",
+        type: "fill",
+        source: "mvt",
+        "source-layer": "areas",
+        paint: {
+          "fill-color": "#3b82f6",
+          "fill-opacity": 0.2,
+        },
+      });
+
+      map.current!.addLayer({
+        id: "areas-outline",
         type: "line",
-        source: "mvt-overlay",
+        source: "mvt",
+        "source-layer": "areas",
+        paint: {
+          "line-color": "#3b82f6",
+          "line-width": 2,
+        },
+      });
+
+      // Route line
+      map.current!.addLayer({
+        id: "route",
+        type: "line",
+        source: "mvt",
         "source-layer": "route",
         paint: {
           "line-color": "#ef4444",
@@ -59,12 +82,25 @@ export default function Home() {
         },
       });
 
-      // Points
+      // POIs
       map.current!.addLayer({
-        id: "mvt-points",
+        id: "pois",
         type: "circle",
-        source: "mvt-overlay",
-        "source-layer": "points",
+        source: "mvt",
+        "source-layer": "pois",
+        paint: {
+          "circle-radius": 3,
+          "circle-color": "#f59e0b",
+          "circle-opacity": 0.7,
+        },
+      });
+
+      // Endpoint markers
+      map.current!.addLayer({
+        id: "markers",
+        type: "circle",
+        source: "mvt",
+        "source-layer": "markers",
         paint: {
           "circle-radius": 7,
           "circle-color": "#10b981",
@@ -73,17 +109,22 @@ export default function Home() {
         },
       });
 
-      // POIs (geohash-queried)
+      // Marker labels
       map.current!.addLayer({
-        id: "mvt-pois",
-        type: "circle",
-        source: "mvt-overlay",
-        "source-layer": "pois",
+        id: "marker-labels",
+        type: "symbol",
+        source: "mvt",
+        "source-layer": "markers",
+        layout: {
+          "text-field": ["get", "name"],
+          "text-offset": [0, 1.5],
+          "text-size": 13,
+          "text-font": ["Open Sans Regular"],
+        },
         paint: {
-          "circle-radius": 5,
-          "circle-color": "#f59e0b",
-          "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 1.5,
+          "text-color": "#1f2937",
+          "text-halo-color": "#ffffff",
+          "text-halo-width": 1.5,
         },
       });
     });

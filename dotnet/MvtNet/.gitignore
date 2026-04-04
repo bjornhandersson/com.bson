@@ -1,0 +1,23 @@
+## Build
+bin/
+obj/
+publish/
+
+## IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+## Benchmark artifacts
+BenchmarkDotNet.Artifacts/
+
+## Node
+node_modules/
+.next/
+next-env.d.ts
+package-lock.json
+
+## OS
+.DS_Store
+Thumbs.db

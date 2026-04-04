@@ -23,91 +23,30 @@ byte[] mvt = tile.Build();
 All methods take WGS84 coordinates and optional key/value attributes.
 Geometry that crosses tile boundaries just works.
 
-## Examples
-
-### Point with attributes
-
-```csharp
-var layer = tile.Layer("events");
-layer.AddPoint(59.328, 18.044, new Dictionary<string, object>
-{
-    ["name"] = "Arrival",
-    ["timestamp"] = 1712150400L,
-    ["speed"] = 42.5
-});
-```
-
-### LineString
-
-```csharp
-var layer = tile.Layer("tracks");
-layer.AddLineString(new (double Lat, double Lng)[]
-{
-    (59.334, 18.030),
-    (59.328, 18.044),
-    (59.332, 18.065),
-});
-```
-
-### Polygon
-
-```csharp
-var layer = tile.Layer("geofences");
-layer.AddPolygon(new (double Lat, double Lng)[]
-{
-    (59.338, 18.025),
-    (59.338, 18.075),
-    (59.315, 18.075),
-    (59.315, 18.025),
-});
-```
-
-### Multiple layers in one tile
-
-```csharp
-var tile = new TileBuilder(z, x, y);
-
-tile.Layer("pois").AddPoint(59.328, 18.044);
-
-tile.Layer("routes").AddLineString(new (double, double)[]
-{
-    (59.334, 18.030),
-    (59.328, 18.044),
-});
-
-tile.Layer("zones").AddPolygon(new (double, double)[]
-{
-    (59.338, 18.025),
-    (59.338, 18.075),
-    (59.315, 18.075),
-    (59.315, 18.025),
-});
-
-byte[] mvt = tile.Build();
-```
-
-### Geohash queries
+## Geohash queries
 
 Got data indexed by geohash? `TileGeohash` tells you which prefixes to query for a given tile.
 
 ```csharp
-// Get prefixes for WHERE geohash LIKE 'prefix%'
 var prefixes = TileGeohash.GetPrefixes(z, x, y);
-
-// Or a single range for WHERE geohash BETWEEN min AND max
-var range = TileGeohash.GetRange(z, x, y);
+// → use with WHERE geohash LIKE 'prefix%'
 ```
 
-Works with any geohash-indexed store (MySQL, DynamoDB, etc.) — no PostGIS required.
+Works with any geohash-indexed store — no PostGIS required.
 
-### Serving tiles
+## Demo
 
-```csharp
-app.MapGet("/tiles/{z:int}/{x:int}/{y:int}", (int z, int x, int y) =>
-{
-    var tile = new TileBuilder(z, x, y);
-    // add your features...
-    return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
-});
+The `MvtNet.Demo.Api` + `MvtNet.Demo.UI` projects show a live map with 50k POIs, a route, and a polygon — all served as vector tiles.
+
+```bash
+# Terminal 1 — API
+cd MvtNet.Demo.Api
+dotnet run
+
+# Terminal 2 — UI
+cd MvtNet.Demo.UI
+npm install
+npm run dev
 ```
 
+Open http://localhost:3000 and zoom around.
