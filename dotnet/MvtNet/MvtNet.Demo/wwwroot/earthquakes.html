@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MvtNet — Live Earthquakes</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    #map { width: 100vw; height: 100vh; }
+
+    .maplibregl-popup-content {
+      background: rgba(15, 23, 42, 0.92);
+      color: #f1f5f9;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .maplibregl-popup-tip { border-top-color: rgba(15, 23, 42, 0.92); }
+    .popup-mag { font-weight: 700; font-size: 18px; }
+    .popup-place { margin-top: 2px; }
+    .popup-detail { color: #94a3b8; font-size: 13px; margin-top: 4px; }
+
+    #demo-nav {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 8px 14px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      z-index: 1;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    }
+    #demo-nav a {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+    #demo-nav a:hover { color: #e2e8f0; background: rgba(255,255,255,0.06); }
+    #demo-nav a.active { color: #38bdf8; background: rgba(56,189,248,0.12); }
+    #demo-nav a.home { font-weight: 600; color: #f1f5f9; }
+
+    #title-bar {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 10px 24px;
+      color: #f1f5f9;
+      font-size: 15px;
+      font-weight: 600;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+      z-index: 1;
+      white-space: nowrap;
+    }
+    #title-bar span { color: #f87171; }
+
+    #legend {
+      position: absolute;
+      bottom: 36px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 14px 18px;
+      color: #e2e8f0;
+      font-size: 12px;
+      line-height: 1.8;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+      z-index: 1;
+    }
+    #legend h4 { margin-bottom: 6px; font-size: 13px; font-weight: 600; }
+    .legend-section { margin-bottom: 10px; }
+    .legend-section:last-child { margin-bottom: 0; }
+    .legend-row { display: flex; align-items: center; gap: 8px; }
+    .legend-dot {
+      border-radius: 50%;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="demo-nav">
+    <a href="/" class="home">MvtNet</a>
+    <a href="/cities.html">Cities</a>
+    <a href="/earthquakes.html" class="active">Earthquakes</a>
+    <a href="/routes.html">Routes</a>
+    <a href="/timezones.html">Timezones</a>
+  </div>
+
+  <div id="title-bar">
+    <span>Live Earthquakes</span> — Past 30 Days (USGS)
+  </div>
+
+  <div id="legend">
+    <div class="legend-section">
+      <h4>Magnitude</h4>
+      <div class="legend-row"><div class="legend-dot" style="width:5px;height:5px;background:#94a3b8"></div> &lt; 2</div>
+      <div class="legend-row"><div class="legend-dot" style="width:8px;height:8px;background:#94a3b8"></div> 2 – 4</div>
+      <div class="legend-row"><div class="legend-dot" style="width:14px;height:14px;background:#94a3b8"></div> 4 – 6</div>
+      <div class="legend-row"><div class="legend-dot" style="width:22px;height:22px;background:#94a3b8"></div> 6+</div>
+    </div>
+    <div class="legend-section">
+      <h4>Depth</h4>
+      <div class="legend-row"><div class="legend-dot" style="width:10px;height:10px;background:#f87171"></div> Shallow (&lt; 70 km)</div>
+      <div class="legend-row"><div class="legend-dot" style="width:10px;height:10px;background:#fbbf24"></div> Mid (70 – 300 km)</div>
+      <div class="legend-row"><div class="legend-dot" style="width:10px;height:10px;background:#60a5fa"></div> Deep (&gt; 300 km)</div>
+    </div>
+  </div>
+
+  <script>
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+      center: [10, 20],
+      zoom: 2,
+      attributionControl: true
+    });
+
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+    map.on('load', () => {
+      map.addSource('earthquakes', {
+        type: 'vector',
+        tiles: [window.location.origin + '/tiles/earthquakes/{z}/{x}/{y}'],
+        minzoom: 0,
+        maxzoom: 14
+      });
+
+      // Glow layer
+      map.addLayer({
+        id: 'quake-glow',
+        type: 'circle',
+        source: 'earthquakes',
+        'source-layer': 'earthquakes',
+        paint: {
+          'circle-radius': [
+            'interpolate', ['exponential', 2], ['get', 'magnitude'],
+            0, 4,   2, 8,   4, 16,   6, 32,   8, 50
+          ],
+          'circle-color': [
+            'interpolate', ['linear'], ['get', 'depth'],
+            0, '#f87171',
+            70, '#fbbf24',
+            300, '#60a5fa'
+          ],
+          'circle-opacity': 0.12,
+          'circle-blur': 1
+        }
+      });
+
+      // Main circle layer
+      map.addLayer({
+        id: 'quake-circle',
+        type: 'circle',
+        source: 'earthquakes',
+        'source-layer': 'earthquakes',
+        paint: {
+          'circle-radius': [
+            'interpolate', ['exponential', 2], ['get', 'magnitude'],
+            0, 1.5,   2, 3,   4, 6,   6, 14,   8, 24
+          ],
+          'circle-color': [
+            'interpolate', ['linear'], ['get', 'depth'],
+            0, '#f87171',
+            70, '#fbbf24',
+            300, '#60a5fa'
+          ],
+          'circle-opacity': 0.8,
+          'circle-stroke-width': 0.5,
+          'circle-stroke-color': 'rgba(255, 255, 255, 0.25)'
+        }
+      });
+
+      // Popup
+      const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12 });
+
+      map.on('click', 'quake-circle', (e) => {
+        const f = e.features[0];
+        const { magnitude, depth, place, time } = f.properties;
+        const magColor = depth < 70 ? '#f87171' : depth < 300 ? '#fbbf24' : '#60a5fa';
+        popup
+          .setLngLat(e.lngLat)
+          .setHTML(
+            `<div class="popup-mag" style="color:${magColor}">M ${Number(magnitude).toFixed(1)}</div>` +
+            `<div class="popup-place">${place}</div>` +
+            `<div class="popup-detail">${Number(depth).toFixed(1)} km deep &middot; ${time}</div>`
+          )
+          .addTo(map);
+      });
+
+      map.on('mouseenter', 'quake-circle', () => map.getCanvas().style.cursor = 'pointer');
+      map.on('mouseleave', 'quake-circle', () => map.getCanvas().style.cursor = '');
+      map.on('click', (e) => {
+        if (!map.queryRenderedFeatures(e.point, { layers: ['quake-circle'] }).length) {
+          popup.remove();
+        }
+      });
+    });
+  </script>
+</body>
+</html>

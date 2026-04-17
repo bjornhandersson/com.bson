@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MvtNet Demos</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    h1 span { color: #38bdf8; }
+
+    .subtitle {
+      color: #94a3b8;
+      font-size: 16px;
+      margin-bottom: 48px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 960px;
+      width: 100%;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 28px 24px;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.2s;
+    }
+    .card:hover {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(56, 189, 248, 0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-icon {
+      font-size: 28px;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .card h2 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .card p {
+      color: #94a3b8;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .card .tag {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.1);
+      color: #38bdf8;
+      letter-spacing: 0.03em;
+    }
+
+    .footer {
+      margin-top: 60px;
+      color: #475569;
+      font-size: 13px;
+    }
+    .footer a { color: #38bdf8; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1><span>MvtNet</span> Demos</h1>
+  <p class="subtitle">Vector tiles from pure C#. No GIS stack required.</p>
+
+  <div class="cards">
+    <a href="/cities.html" class="card">
+      <span class="card-icon">&#127759;</span>
+      <h2>10,000 Cities</h2>
+      <p>The world's largest cities as points on a map, colored and sized by population.</p>
+      <span class="tag">POINTS</span>
+    </a>
+
+    <a href="/earthquakes.html" class="card">
+      <span class="card-icon">&#127754;</span>
+      <h2>Live Earthquakes</h2>
+      <p>Real USGS earthquake data from the past 30 days. Sized by magnitude, colored by depth.</p>
+      <span class="tag">POINTS &middot; LIVE DATA</span>
+    </a>
+
+    <a href="/routes.html" class="card">
+      <span class="card-icon">&#9992;</span>
+      <h2>Flight Routes</h2>
+      <p>Great-circle arcs between the world's largest cities. Clipped automatically at tile boundaries.</p>
+      <span class="tag">LINESTRINGS</span>
+    </a>
+
+    <a href="/timezones.html" class="card">
+      <span class="card-icon">&#127760;</span>
+      <h2>World Timezones</h2>
+      <p>Real timezone boundaries from Natural Earth. Colored by UTC offset, clickable zones.</p>
+      <span class="tag">POLYGONS</span>
+    </a>
+
+  </div>
+
+  <p class="footer">
+    Powered by <a href="https://www.nuget.org/packages/Bson.MvtNet">Bson.MvtNet</a>
+  </p>
+</body>
+</html>
