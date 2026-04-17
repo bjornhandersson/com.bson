@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.002.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dispatcher", "Dispatcher\Dispatcher.csproj", "{8AF1E580-1DF5-4CE5-AA63-15DEC11FEB3C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dispatcher", "Bson.Dispatcher\Dispatcher.csproj", "{8AF1E580-1DF5-4CE5-AA63-15DEC11FEB3C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dispatcher.Test", "Dispatcher.Test\Dispatcher.Test.csproj", "{E03E721A-7316-4E44-8167-62EE5CEDFCB2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dispatcher.Test", "Bson.Dispatcher.Test\Dispatcher.Test.csproj", "{E03E721A-7316-4E44-8167-62EE5CEDFCB2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

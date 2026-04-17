@@ -1,5 +1,5 @@
 <Solution>
-  <Project Path="MvtNet.Benchmarks/MvtNet.Benchmarks.csproj" />
-  <Project Path="MvtNet.Tests/MvtNet.Tests.csproj" />
-  <Project Path="MvtNet/MvtNet.csproj" />
+  <Project Path="Bson.MvtNet.Benchmarks/MvtNet.Benchmarks.csproj" />
+  <Project Path="Bson.MvtNet.Tests/MvtNet.Tests.csproj" />
+  <Project Path="Bson.MvtNet/MvtNet.csproj" />
 </Solution>

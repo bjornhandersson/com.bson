@@ -17,6 +17,6 @@
     <Using Include="NUnit.Framework" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\MvtNet\MvtNet.csproj" />
+    <ProjectReference Include="..\Bson.MvtNet\MvtNet.csproj" />
   </ItemGroup>
 </Project>

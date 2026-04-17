@@ -17,6 +17,6 @@
     <Using Include="NUnit.Framework" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Dispatcher\Dispatcher.csproj" />
+    <ProjectReference Include="..\Bson.Dispatcher\Dispatcher.csproj" />
   </ItemGroup>
 </Project>
