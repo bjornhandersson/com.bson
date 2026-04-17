@@ -40,8 +40,15 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
+      - name: Check version is new
+        run: |
+          VERSION=$(grep -oP '(?<=<Version>).*(?=</Version>)' dotnet/MvtNet/Bson.MvtNet/MvtNet.csproj)
+          if dotnet package search Bson.MvtNet --exact-match 2>&1 | grep -q "$VERSION"; then
+            echo "::error::Bson.MvtNet $VERSION already exists on NuGet. Bump the version in MvtNet.csproj before pushing."
+            exit 1
+          fi
       - run: dotnet pack dotnet/MvtNet/Bson.MvtNet/MvtNet.csproj -c Release
-      - run: dotnet nuget push dotnet/MvtNet/Bson.MvtNet/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      - run: dotnet nuget push dotnet/MvtNet/Bson.MvtNet/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
 
   publish-dispatcher:
     needs: detect-changes
@@ -52,8 +59,15 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
+      - name: Check version is new
+        run: |
+          VERSION=$(grep -oP '(?<=<Version>).*(?=</Version>)' dotnet/Dispatcher/Bson.Dispatcher/Dispatcher.csproj)
+          if dotnet package search Bson.Dispatcher --exact-match 2>&1 | grep -q "$VERSION"; then
+            echo "::error::Bson.Dispatcher $VERSION already exists on NuGet. Bump the version in Dispatcher.csproj before pushing."
+            exit 1
+          fi
       - run: dotnet pack dotnet/Dispatcher/Bson.Dispatcher/Dispatcher.csproj -c Release
-      - run: dotnet nuget push dotnet/Dispatcher/Bson.Dispatcher/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      - run: dotnet nuget push dotnet/Dispatcher/Bson.Dispatcher/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
 
   publish-hilbert:
     needs: detect-changes
@@ -64,5 +78,12 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
+      - name: Check version is new
+        run: |
+          VERSION=$(grep -oP '(?<=<Version>).*(?=</Version>)' dotnet/HilbertIndex/Bson.HilbertIndex/Bson.HilbertIndex.csproj)
+          if dotnet package search Bson.HilbertIndex --exact-match 2>&1 | grep -q "$VERSION"; then
+            echo "::error::Bson.HilbertIndex $VERSION already exists on NuGet. Bump the version in Bson.HilbertIndex.csproj before pushing."
+            exit 1
+          fi
       - run: dotnet pack dotnet/HilbertIndex/Bson.HilbertIndex/Bson.HilbertIndex.csproj -c Release
-      - run: dotnet nuget push dotnet/HilbertIndex/Bson.HilbertIndex/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      - run: dotnet nuget push dotnet/HilbertIndex/Bson.HilbertIndex/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
