@@ -133,6 +133,15 @@
       background: rgba(255, 255, 255, 0.1);
       color: #e2e8f0;
     }
+    #tile-timing {
+      color: #64748b;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      min-width: 60px;
+      text-align: right;
+    }
+    #tile-timing.fast { color: #34d399; }
+    #tile-timing.slow { color: #f87171; }
   </style>
 </head>
 <body>
@@ -151,6 +160,7 @@
   <div id="mode-toggle">
     <button id="btn-simple" class="active">Simple</button>
     <button id="btn-geohash">Geohash</button>
+    <span id="tile-timing"></span>
   </div>
 
   <div id="legend">
@@ -173,10 +183,34 @@
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
     let currentMode = 'simple';
+    let tileTimings = [];
 
     function tileUrl(mode) {
       return window.location.origin + '/tiles/' + mode + '/{z}/{x}/{y}';
     }
+
+    function updateTimingDisplay() {
+      if (tileTimings.length === 0) { return; }
+      const avg = Math.round(tileTimings.reduce((a, b) => a + b, 0) / tileTimings.length);
+      const el = document.getElementById('tile-timing');
+      el.textContent = avg + ' ms/tile';
+      el.className = avg < 5 ? 'fast' : avg > 20 ? 'slow' : '';
+    }
+
+    const _origFetch = window.fetch;
+    window.fetch = function(url, ...args) {
+      if (typeof url === 'string' && url.includes('/tiles/')) {
+        const t0 = performance.now();
+        return _origFetch(url, ...args).then(res => {
+          const ms = performance.now() - t0;
+          tileTimings.push(ms);
+          if (tileTimings.length > 20) { tileTimings.shift(); }
+          updateTimingDisplay();
+          return res;
+        });
+      }
+      return _origFetch(url, ...args);
+    };
 
     map.on('load', () => {
       map.addSource('cities', {
@@ -276,6 +310,8 @@
       function switchMode(mode) {
         if (mode === currentMode) return;
         currentMode = mode;
+        tileTimings = [];
+        document.getElementById('tile-timing').textContent = '';
         document.getElementById('btn-simple').classList.toggle('active', mode === 'simple');
         document.getElementById('btn-geohash').classList.toggle('active', mode === 'geohash');
         map.getSource('cities').setTiles([tileUrl(mode)]);

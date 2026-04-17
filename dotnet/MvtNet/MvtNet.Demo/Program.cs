@@ -42,11 +42,11 @@ app.MapGet(
             layer.AddPoint(
                 city.Lat,
                 city.Lng,
-                new KeyValuePair<string, object>[]
+                new Dictionary<string, object>
                 {
-                    new("name", city.Name),
-                    new("population", city.Population),
-                    new("country", city.Country),
+                    ["name"] = city.Name,
+                    ["population"] = city.Population,
+                    ["country"] = city.Country,
                 }
             );
         }
@@ -72,11 +72,11 @@ app.MapGet(
             layer.AddPoint(
                 city.Lat,
                 city.Lng,
-                new KeyValuePair<string, object>[]
+                new Dictionary<string, object>
                 {
-                    new("name", city.Name),
-                    new("population", city.Population),
-                    new("country", city.Country),
+                    ["name"] = city.Name,
+                    ["population"] = city.Population,
+                    ["country"] = city.Country,
                 }
             );
         }
@@ -100,12 +100,12 @@ app.MapGet(
             layer.AddPoint(
                 eq.Lat,
                 eq.Lng,
-                new KeyValuePair<string, object>[]
+                new Dictionary<string, object>
                 {
-                    new("magnitude", eq.Magnitude),
-                    new("depth", eq.Depth),
-                    new("place", eq.Place),
-                    new("time", eq.Time),
+                    ["magnitude"] = eq.Magnitude,
+                    ["depth"] = eq.Depth,
+                    ["place"] = eq.Place,
+                    ["time"] = eq.Time,
                 }
             );
         }
