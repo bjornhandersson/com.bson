@@ -46,9 +46,7 @@ catch (Exception ex)
 
 app.UseStaticFiles();
 
-// ============================================================
 // Cities — brute-force
-// ============================================================
 app.MapGet(
     "/tiles/simple/{z:int}/{x:int}/{y:int}",
     (int z, int x, int y) =>
@@ -74,9 +72,7 @@ app.MapGet(
     }
 );
 
-// ============================================================
 // Cities — geohash-indexed
-// ============================================================
 app.MapGet(
     "/tiles/geohash/{z:int}/{x:int}/{y:int}",
     (int z, int x, int y) =>
@@ -104,9 +100,7 @@ app.MapGet(
     }
 );
 
-// ============================================================
 // Earthquakes — real USGS data
-// ============================================================
 app.MapGet(
     "/tiles/earthquakes/{z:int}/{x:int}/{y:int}",
     (int z, int x, int y) =>
@@ -133,9 +127,7 @@ app.MapGet(
     }
 );
 
-// ============================================================
 // Routes — great-circle flight paths (linestrings)
-// ============================================================
 app.MapGet(
     "/tiles/routes/{z:int}/{x:int}/{y:int}",
     (int z, int x, int y) =>
@@ -160,9 +152,7 @@ app.MapGet(
     }
 );
 
-// ============================================================
 // Timezones — Natural Earth boundaries (polygons)
-// ============================================================
 app.MapGet(
     "/tiles/timezones/{z:int}/{x:int}/{y:int}",
     (int z, int x, int y) =>
