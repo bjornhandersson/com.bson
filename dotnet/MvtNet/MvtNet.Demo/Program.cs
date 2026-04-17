@@ -4,9 +4,8 @@ using MvtNet.Demo;
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-// --- Cities (CSV) ---
-var csvPath = Path.Combine(AppContext.BaseDirectory, "Data", "cities.csv");
-var cities = City.LoadFromCsv(csvPath);
+// --- Cities (GeoNames, downloaded and cached) ---
+var cities = await City.LoadAsync();
 var cityIndex = new CityIndex(cities);
 Console.WriteLine($"Loaded {cities.Count} cities");
 
