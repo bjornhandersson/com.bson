@@ -10,6 +10,25 @@ var cities = City.LoadFromCsv(csvPath);
 var cityIndex = new CityIndex(cities);
 Console.WriteLine($"Loaded {cities.Count} cities");
 
+// --- Routes (great-circle arcs between top cities) ---
+var routes = FlightRouteBuilder.BuildRoutes(cities);
+Console.WriteLine($"Generated {routes.Count} flight routes");
+
+// --- Timezones (Natural Earth boundaries) ---
+List<TimezonePolygon> timezones;
+try
+{
+    timezones = await TimezoneFeed.LoadAsync();
+    Console.WriteLine($"Loaded {timezones.Count} timezone polygons");
+}
+catch (Exception ex)
+{
+    Console.WriteLine(
+        $"Warning: could not load timezone data ({ex.Message}), timezone demo will be empty"
+    );
+    timezones = [];
+}
+
 // --- Earthquakes (USGS live feed) ---
 List<Earthquake> earthquakes;
 try
@@ -107,6 +126,55 @@ app.MapGet(
                     ["place"] = eq.Place,
                     ["time"] = eq.Time,
                 }
+            );
+        }
+
+        return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
+    }
+);
+
+// ============================================================
+// Routes — great-circle flight paths (linestrings)
+// ============================================================
+app.MapGet(
+    "/tiles/routes/{z:int}/{x:int}/{y:int}",
+    (int z, int x, int y) =>
+    {
+        var tile = new TileBuilder(z, x, y);
+        var layer = tile.Layer("routes");
+
+        foreach (var route in routes)
+        {
+            layer.AddLineString(
+                route.Path,
+                new Dictionary<string, object>
+                {
+                    ["from"] = route.From,
+                    ["to"] = route.To,
+                    ["distance_km"] = Math.Round(route.DistanceKm),
+                }
+            );
+        }
+
+        return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
+    }
+);
+
+// ============================================================
+// Timezones — Natural Earth boundaries (polygons)
+// ============================================================
+app.MapGet(
+    "/tiles/timezones/{z:int}/{x:int}/{y:int}",
+    (int z, int x, int y) =>
+    {
+        var tile = new TileBuilder(z, x, y);
+        var layer = tile.Layer("timezones");
+
+        foreach (var tz in timezones)
+        {
+            layer.AddPolygon(
+                tz.Ring,
+                new Dictionary<string, object> { ["name"] = tz.Name, ["utc_offset"] = tz.UtcOffset }
             );
         }
 
