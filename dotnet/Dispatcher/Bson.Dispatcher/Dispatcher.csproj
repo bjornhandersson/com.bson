@@ -4,7 +4,7 @@
     <Nullable>enable</Nullable>
     <LangVersion>8.0</LangVersion>
     <PackageId>Bson.Dispatcher</PackageId>
-    <Version>0.1.0</Version>
+    <Version>1.0.0</Version>
     <Authors>bson</Authors>
     <Description>Parallel task processing with strict ordering per partition key</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

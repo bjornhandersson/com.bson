@@ -1,0 +1,65 @@
+name: Publish NuGet packages
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "dotnet/MvtNet/Bson.MvtNet/**"
+      - "dotnet/Dispatcher/Bson.Dispatcher/**"
+      - "dotnet/HilbertIndex/Bson.HilbertIndex/**"
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      mvtnet: ${{ steps.changes.outputs.mvtnet }}
+      dispatcher: ${{ steps.changes.outputs.dispatcher }}
+      hilbert: ${{ steps.changes.outputs.hilbert }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            mvtnet:
+              - "dotnet/MvtNet/Bson.MvtNet/**"
+            dispatcher:
+              - "dotnet/Dispatcher/Bson.Dispatcher/**"
+            hilbert:
+              - "dotnet/HilbertIndex/Bson.HilbertIndex/**"
+
+  publish-mvtnet:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.mvtnet == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet pack dotnet/MvtNet/Bson.MvtNet/MvtNet.csproj -c Release
+      - run: dotnet nuget push dotnet/MvtNet/Bson.MvtNet/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+  publish-dispatcher:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.dispatcher == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet pack dotnet/Dispatcher/Bson.Dispatcher/Dispatcher.csproj -c Release
+      - run: dotnet nuget push dotnet/Dispatcher/Bson.Dispatcher/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+  publish-hilbert:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.hilbert == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet pack dotnet/HilbertIndex/Bson.HilbertIndex/Bson.HilbertIndex.csproj -c Release
+      - run: dotnet nuget push dotnet/HilbertIndex/Bson.HilbertIndex/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
