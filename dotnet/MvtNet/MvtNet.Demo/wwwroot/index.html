@@ -3,283 +3,119 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MvtNet Demo — 10,000 Cities</title>
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <title>MvtNet Demos</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    #map { width: 100vw; height: 100vh; }
-
-    .maplibregl-popup-content {
-      background: rgba(15, 23, 42, 0.92);
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
       color: #f1f5f9;
-      border-radius: 8px;
-      padding: 12px 16px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    h1 span { color: #38bdf8; }
+
+    .subtitle {
+      color: #94a3b8;
+      font-size: 16px;
+      margin-bottom: 48px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 960px;
+      width: 100%;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 28px 24px;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.2s;
+    }
+    .card:hover {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(56, 189, 248, 0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-icon {
+      font-size: 28px;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .card h2 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .card p {
+      color: #94a3b8;
       font-size: 14px;
       line-height: 1.5;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
     }
-    .maplibregl-popup-tip { border-top-color: rgba(15, 23, 42, 0.92); }
-    .popup-name { font-weight: 600; font-size: 15px; }
-    .popup-country { color: #94a3b8; }
-    .popup-pop { margin-top: 4px; color: #38bdf8; font-variant-numeric: tabular-nums; }
-
-    #legend {
-      position: absolute;
-      bottom: 36px;
-      left: 16px;
-      background: rgba(15, 23, 42, 0.88);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
-      padding: 14px 18px;
-      color: #e2e8f0;
-      font-size: 12px;
-      line-height: 1.6;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-      z-index: 1;
-    }
-    #legend h4 { margin-bottom: 8px; font-size: 13px; font-weight: 600; letter-spacing: 0.02em; }
-    .legend-row { display: flex; align-items: center; gap: 8px; }
-    .legend-dot {
-      border-radius: 50%;
-      flex-shrink: 0;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-    }
-
-    #title-bar {
-      position: absolute;
-      top: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(15, 23, 42, 0.88);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
-      padding: 10px 24px;
-      color: #f1f5f9;
-      font-size: 15px;
-      font-weight: 600;
-      letter-spacing: 0.01em;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-      z-index: 1;
-      white-space: nowrap;
-    }
-    #title-bar span { color: #38bdf8; }
-
-    #mode-toggle {
-      position: absolute;
-      top: 16px;
-      right: 60px;
-      background: rgba(15, 23, 42, 0.88);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
-      padding: 8px 12px;
-      color: #e2e8f0;
-      font-size: 13px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-      z-index: 1;
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
-    #mode-toggle button {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: #94a3b8;
-      padding: 6px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      font-family: inherit;
-      transition: all 0.15s;
-    }
-    #mode-toggle button.active {
-      background: rgba(56, 189, 248, 0.15);
-      border-color: #38bdf8;
+    .card .tag {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.1);
       color: #38bdf8;
+      letter-spacing: 0.03em;
     }
-    #mode-toggle button:hover:not(.active) {
-      background: rgba(255, 255, 255, 0.1);
-      color: #e2e8f0;
+
+    .footer {
+      margin-top: 60px;
+      color: #475569;
+      font-size: 13px;
     }
+    .footer a { color: #38bdf8; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <div id="map"></div>
+  <h1><span>MvtNet</span> Demos</h1>
+  <p class="subtitle">Vector tiles from pure C#. No GIS stack required.</p>
 
-  <div id="title-bar">
-    <span>MvtNet</span> — 10,000 Cities of the World
+  <div class="cards">
+    <a href="/cities.html" class="card">
+      <span class="card-icon">&#127759;</span>
+      <h2>10,000 Cities</h2>
+      <p>The world's largest cities as points on a map, colored and sized by population.</p>
+      <span class="tag">POINTS</span>
+    </a>
+
+    <a href="/earthquakes.html" class="card">
+      <span class="card-icon">&#127754;</span>
+      <h2>Live Earthquakes</h2>
+      <p>Real USGS earthquake data from the past 30 days. Sized by magnitude, colored by depth.</p>
+      <span class="tag">POINTS &middot; LIVE DATA</span>
+    </a>
+
   </div>
 
-  <div id="mode-toggle">
-    <button id="btn-simple" class="active">Simple</button>
-    <button id="btn-geohash">Geohash</button>
-  </div>
-
-  <div id="legend">
-    <h4>Population</h4>
-    <div class="legend-row"><div class="legend-dot" style="width:8px;height:8px;background:#60a5fa"></div> &lt; 500k</div>
-    <div class="legend-row"><div class="legend-dot" style="width:11px;height:11px;background:#34d399"></div> 500k – 5M</div>
-    <div class="legend-row"><div class="legend-dot" style="width:15px;height:15px;background:#fbbf24"></div> 5M – 15M</div>
-    <div class="legend-row"><div class="legend-dot" style="width:20px;height:20px;background:#f87171"></div> &gt; 15M</div>
-  </div>
-
-  <script>
-    const map = new maplibregl.Map({
-      container: 'map',
-      style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-      center: [20, 25],
-      zoom: 2.5,
-      attributionControl: true
-    });
-
-    map.addControl(new maplibregl.NavigationControl(), 'top-right');
-
-    let currentMode = 'simple';
-
-    function tileUrl(mode) {
-      return window.location.origin + '/tiles/' + mode + '/{z}/{x}/{y}';
-    }
-
-    map.on('load', () => {
-      map.addSource('cities', {
-        type: 'vector',
-        tiles: [tileUrl('simple')],
-        minzoom: 0,
-        maxzoom: 14
-      });
-
-      map.addLayer({
-        id: 'cities-glow',
-        type: 'circle',
-        source: 'cities',
-        'source-layer': 'cities',
-        paint: {
-          'circle-radius': [
-            'interpolate', ['linear'],
-            ['get', 'population'],
-            50000, 6,
-            500000, 10,
-            5000000, 18,
-            25000000, 30
-          ],
-          'circle-color': [
-            'interpolate', ['linear'],
-            ['get', 'population'],
-            50000, '#60a5fa',
-            500000, '#34d399',
-            5000000, '#fbbf24',
-            25000000, '#f87171'
-          ],
-          'circle-opacity': 0.15,
-          'circle-blur': 1
-        }
-      });
-
-      map.addLayer({
-        id: 'cities-circle',
-        type: 'circle',
-        source: 'cities',
-        'source-layer': 'cities',
-        paint: {
-          'circle-radius': [
-            'interpolate', ['linear'],
-            ['get', 'population'],
-            50000, 2.5,
-            500000, 4,
-            5000000, 7,
-            25000000, 12
-          ],
-          'circle-color': [
-            'interpolate', ['linear'],
-            ['get', 'population'],
-            50000, '#60a5fa',
-            500000, '#34d399',
-            5000000, '#fbbf24',
-            25000000, '#f87171'
-          ],
-          'circle-opacity': 0.85,
-          'circle-stroke-width': [
-            'interpolate', ['linear'],
-            ['get', 'population'],
-            50000, 0.5,
-            5000000, 1,
-            25000000, 1.5
-          ],
-          'circle-stroke-color': 'rgba(255, 255, 255, 0.3)'
-        }
-      });
-
-      // City labels at higher zoom
-      map.addLayer({
-        id: 'cities-label',
-        type: 'symbol',
-        source: 'cities',
-        'source-layer': 'cities',
-        minzoom: 5,
-        layout: {
-          'text-field': ['get', 'name'],
-          'text-size': 11,
-          'text-offset': [0, 1.4],
-          'text-anchor': 'top',
-          'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-          'text-max-width': 8
-        },
-        paint: {
-          'text-color': '#e2e8f0',
-          'text-halo-color': 'rgba(15, 23, 42, 0.8)',
-          'text-halo-width': 1.5
-        }
-      });
-
-      const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12 });
-
-      map.on('click', 'cities-circle', (e) => {
-        const f = e.features[0];
-        const { name, country, population } = f.properties;
-        const pop = Number(population).toLocaleString();
-        popup
-          .setLngLat(e.lngLat)
-          .setHTML(
-            `<div class="popup-name">${name}</div>` +
-            `<div class="popup-country">${country}</div>` +
-            `<div class="popup-pop">${pop}</div>`
-          )
-          .addTo(map);
-      });
-
-      map.on('mouseenter', 'cities-circle', () => {
-        map.getCanvas().style.cursor = 'pointer';
-      });
-
-      map.on('mouseleave', 'cities-circle', () => {
-        map.getCanvas().style.cursor = '';
-      });
-
-      map.on('click', (e) => {
-        const features = map.queryRenderedFeatures(e.point, { layers: ['cities-circle'] });
-        if (!features.length) {
-          popup.remove();
-        }
-      });
-
-      // Mode toggle
-      function switchMode(mode) {
-        if (mode === currentMode) return;
-        currentMode = mode;
-        document.getElementById('btn-simple').classList.toggle('active', mode === 'simple');
-        document.getElementById('btn-geohash').classList.toggle('active', mode === 'geohash');
-        map.getSource('cities').setTiles([tileUrl(mode)]);
-      }
-
-      document.getElementById('btn-simple').addEventListener('click', () => switchMode('simple'));
-      document.getElementById('btn-geohash').addEventListener('click', () => switchMode('geohash'));
-    });
-  </script>
+  <p class="footer">
+    Powered by <a href="https://www.nuget.org/packages/Bson.MvtNet">Bson.MvtNet</a>
+  </p>
 </body>
 </html>

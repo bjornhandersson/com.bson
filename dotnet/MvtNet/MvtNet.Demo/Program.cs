@@ -4,14 +4,32 @@ using MvtNet.Demo;
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
+// --- Cities (CSV) ---
 var csvPath = Path.Combine(AppContext.BaseDirectory, "Data", "cities.csv");
 var cities = City.LoadFromCsv(csvPath);
 var cityIndex = new CityIndex(cities);
 Console.WriteLine($"Loaded {cities.Count} cities");
 
+// --- Earthquakes (USGS live feed) ---
+List<Earthquake> earthquakes;
+try
+{
+    earthquakes = await UsgsEarthquakeFeed.FetchAsync();
+    Console.WriteLine($"Loaded {earthquakes.Count} earthquakes from USGS");
+}
+catch (Exception ex)
+{
+    Console.WriteLine(
+        $"Warning: could not fetch USGS data ({ex.Message}), earthquake demo will be empty"
+    );
+    earthquakes = [];
+}
+
 app.UseStaticFiles();
 
-// Demo 1: Brute-force — iterates all 10,000 cities for every tile
+// ============================================================
+// Cities — brute-force
+// ============================================================
 app.MapGet(
     "/tiles/simple/{z:int}/{x:int}/{y:int}",
     (int z, int x, int y) =>
@@ -33,12 +51,13 @@ app.MapGet(
             );
         }
 
-        var bytes = tile.Build();
-        return Results.Bytes(bytes, "application/vnd.mapbox-vector-tile");
+        return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
     }
 );
 
-// Demo 2: Geohash-indexed — only fetches cities that overlap the tile
+// ============================================================
+// Cities — geohash-indexed
+// ============================================================
 app.MapGet(
     "/tiles/geohash/{z:int}/{x:int}/{y:int}",
     (int z, int x, int y) =>
@@ -62,8 +81,36 @@ app.MapGet(
             );
         }
 
-        var bytes = tile.Build();
-        return Results.Bytes(bytes, "application/vnd.mapbox-vector-tile");
+        return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
+    }
+);
+
+// ============================================================
+// Earthquakes — real USGS data
+// ============================================================
+app.MapGet(
+    "/tiles/earthquakes/{z:int}/{x:int}/{y:int}",
+    (int z, int x, int y) =>
+    {
+        var tile = new TileBuilder(z, x, y);
+        var layer = tile.Layer("earthquakes");
+
+        foreach (var eq in earthquakes)
+        {
+            layer.AddPoint(
+                eq.Lat,
+                eq.Lng,
+                new KeyValuePair<string, object>[]
+                {
+                    new("magnitude", eq.Magnitude),
+                    new("depth", eq.Depth),
+                    new("place", eq.Place),
+                    new("time", eq.Time),
+                }
+            );
+        }
+
+        return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
     }
 );
 
