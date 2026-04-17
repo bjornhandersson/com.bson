@@ -11,9 +11,11 @@
     Library containing a simple hilbert based spatial index for NearestNeighbor and Within type of queries over a set of points.
     </PackageDescription>
     <PackageTags>library;spatial;geo;hilbert;C#</PackageTags>
-    <PackageProjectUrl>https://github.com/bjornhandersson/HilbertIndex</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/bjornhandersson/com.bson</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Authors>bjornhandersson</Authors>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/bjornhandersson/com.bson</RepositoryUrl>
+    <Authors>bson</Authors>
   </PropertyGroup>
 
   <ItemGroup>

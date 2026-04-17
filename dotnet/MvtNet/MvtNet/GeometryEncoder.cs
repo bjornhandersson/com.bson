@@ -1,4 +1,4 @@
-namespace MvtNet;
+namespace Bson.MvtNet;
 
 /// <summary>
 /// Encodes MVT geometry commands (MoveTo, LineTo, ClosePath) with zigzag + delta encoding.

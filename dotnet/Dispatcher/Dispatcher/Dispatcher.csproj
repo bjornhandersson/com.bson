@@ -3,6 +3,14 @@
     <TargetFrameworks>netcoreapp3.1;net462</TargetFrameworks>
     <Nullable>enable</Nullable>
     <LangVersion>8.0</LangVersion>
+    <PackageId>Bson.Dispatcher</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>bson</Authors>
+    <Description>Parallel task processing with strict ordering per partition key</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>dispatcher;async;parallel;partitioning;channels</PackageTags>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/bjornhandersson/com.bson</RepositoryUrl>
   </PropertyGroup>
   <ItemGroup Condition="$(TargetFramework.StartsWith('net4'))">
     <PackageReference Include="System.Threading.Channels" Version="8.0.0" />

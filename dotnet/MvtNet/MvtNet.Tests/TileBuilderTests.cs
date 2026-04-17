@@ -1,6 +1,6 @@
 using VectorTile;
 
-namespace MvtNet.Tests;
+namespace Bson.MvtNet.Tests;
 
 public class TileBuilderTests
 {

@@ -1,4 +1,4 @@
-namespace MvtNet;
+namespace Bson.MvtNet;
 
 /// <summary>
 /// Clips a LineString to a rectangular region defined by (min, min) to (max, max).

@@ -1,7 +1,7 @@
 using Google.Protobuf;
 using VectorTile;
 
-namespace MvtNet;
+namespace Bson.MvtNet;
 
 /// <summary>
 /// Builds an MVT tile from WGS84 features for a given z/x/y tile address.

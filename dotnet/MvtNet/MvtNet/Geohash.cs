@@ -1,4 +1,4 @@
-namespace MvtNet;
+namespace Bson.MvtNet;
 
 /// <summary>
 /// Base32 geohash encode/decode. No external dependencies.

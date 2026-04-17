@@ -3,7 +3,7 @@
 Encode [Mapbox Vector Tiles](https://github.com/mapbox/vector-tile-spec) from plain C#. No GIS stack, no PostGIS, no Mapnik.
 
 ```
-dotnet add package MvtNet
+dotnet add package Bson.MvtNet
 ```
 
 ```csharp

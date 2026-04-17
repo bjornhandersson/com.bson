@@ -5,7 +5,7 @@ Parallel task processing with strict ordering per partition key. Same key = sequ
 ## Install
 
 ```
-dotnet add package Bson.AsyncDispatcher
+dotnet add package Bson.Dispatcher
 ```
 
 ## Usage

@@ -1,4 +1,4 @@
-namespace MvtNet;
+namespace Bson.MvtNet;
 
 /// <summary>
 /// Translates tile coordinates (z/x/y) into geohash prefixes for efficient

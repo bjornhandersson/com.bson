@@ -1,4 +1,4 @@
-namespace MvtNet;
+namespace Bson.MvtNet;
 
 /// <summary>
 /// Converts WGS84 coordinates to tile-local coordinates using Web Mercator projection.

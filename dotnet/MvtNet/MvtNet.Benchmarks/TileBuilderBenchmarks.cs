@@ -1,7 +1,7 @@
 using BenchmarkDotNet.Attributes;
-using MvtNet;
+using Bson.MvtNet;
 
-namespace MvtNet.Benchmarks;
+namespace Bson.MvtNet.Benchmarks;
 
 [MemoryDiagnoser]
 [ShortRunJob]

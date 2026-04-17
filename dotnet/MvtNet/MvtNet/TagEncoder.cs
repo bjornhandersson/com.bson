@@ -1,6 +1,6 @@
 using VectorTile;
 
-namespace MvtNet;
+namespace Bson.MvtNet;
 
 /// <summary>
 /// Manages key/value dictionaries per layer and encodes feature tags as index pairs.
