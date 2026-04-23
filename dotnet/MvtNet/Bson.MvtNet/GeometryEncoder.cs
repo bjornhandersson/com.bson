@@ -30,7 +30,7 @@ internal static class GeometryEncoder
             );
         }
 
-        // Layout: MoveTo(1) + x + y + LineTo(1) + (n-1) * (dx + dy)
+        // Layout: MoveTo(1) + x + y + LineTo(n-1) + (n-1) * (dx + dy)
         int count = 3 + 1 + (coords.Length - 1) * 2;
         var commands = new uint[count];
         int pos = 0;
@@ -69,7 +69,7 @@ internal static class GeometryEncoder
             );
         }
 
-        // Layout: MoveTo(1) + x + y + LineTo(1) + (n-1) * (dx + dy) + ClosePath(1)
+        // Layout: MoveTo(1) + x + y + LineTo(n-1) + (n-1) * (dx + dy) + ClosePath(1)
         int count = 3 + 1 + (ring.Length - 1) * 2 + 1;
         var commands = new uint[count];
         int pos = 0;
