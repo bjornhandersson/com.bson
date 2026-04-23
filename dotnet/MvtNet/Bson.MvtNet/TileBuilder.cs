@@ -16,6 +16,23 @@ public class TileBuilder
 
     public TileBuilder(int z, int x, int y, uint extent = TileMath.DefaultExtent)
     {
+        if (z < 0 || z > 30)
+        {
+            throw new ArgumentOutOfRangeException(nameof(z), z, "z must be in [0, 30].");
+        }
+
+        int maxCoord = (1 << z) - 1;
+
+        if (x < 0 || x > maxCoord)
+        {
+            throw new ArgumentOutOfRangeException(nameof(x), x, $"x must be in [0, {maxCoord}] for z={z}.");
+        }
+
+        if (y < 0 || y > maxCoord)
+        {
+            throw new ArgumentOutOfRangeException(nameof(y), y, $"y must be in [0, {maxCoord}] for z={z}.");
+        }
+
         _z = z;
         _x = x;
         _y = y;
