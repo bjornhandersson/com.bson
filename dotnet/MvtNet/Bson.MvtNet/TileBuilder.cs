@@ -25,12 +25,20 @@ public class TileBuilder
 
         if (x < 0 || x > maxCoord)
         {
-            throw new ArgumentOutOfRangeException(nameof(x), x, $"x must be in [0, {maxCoord}] for z={z}.");
+            throw new ArgumentOutOfRangeException(
+                nameof(x),
+                x,
+                $"x must be in [0, {maxCoord}] for z={z}."
+            );
         }
 
         if (y < 0 || y > maxCoord)
         {
-            throw new ArgumentOutOfRangeException(nameof(y), y, $"y must be in [0, {maxCoord}] for z={z}.");
+            throw new ArgumentOutOfRangeException(
+                nameof(y),
+                y,
+                $"y must be in [0, {maxCoord}] for z={z}."
+            );
         }
 
         _z = z;

@@ -79,41 +79,6 @@ public class TileGeohashTests
     }
 
     [Test]
-    public void GetRange_Stockholm_Z12_ValidRange()
-    {
-        var range = TileGeohash.GetRange(12, 2253, 1204);
-
-        Assert.That(range.Min, Is.Not.Empty);
-        Assert.That(range.Max, Is.Not.Empty);
-        Assert.That(string.CompareOrdinal(range.Min, range.Max), Is.LessThanOrEqualTo(0));
-    }
-
-    [Test]
-    public void GetRange_ContainsAllPrefixes()
-    {
-        int z = 12,
-            x = 2253,
-            y = 1204;
-        var prefixes = TileGeohash.GetPrefixes(z, x, y);
-        var range = TileGeohash.GetRange(z, x, y);
-
-        // Every prefix should fall within the range
-        foreach (var prefix in prefixes)
-        {
-            Assert.That(
-                string.CompareOrdinal(prefix, range.Min),
-                Is.GreaterThanOrEqualTo(0),
-                $"Prefix {prefix} is below range min {range.Min}"
-            );
-            Assert.That(
-                string.CompareOrdinal(prefix, range.Max),
-                Is.LessThanOrEqualTo(0),
-                $"Prefix {prefix} is above range max {range.Max}"
-            );
-        }
-    }
-
-    [Test]
     public void GetPrecision_ZoomMapping()
     {
         Assert.That(TileGeohash.GetPrecision(0), Is.EqualTo(1));

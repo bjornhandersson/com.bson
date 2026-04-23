@@ -19,25 +19,6 @@ public static class TileGeohash
     }
 
     /// <summary>
-    /// Returns (min, max) geohash for a single <c>WHERE geohash BETWEEN min AND max</c> query.
-    /// Faster than multiple prefix queries but includes some false positives outside the tile.
-    /// </summary>
-    public static GeohashRange GetRange(int z, int x, int y)
-    {
-        int precision = GetPrecision(z);
-        var bounds = TileMath.GetTileBounds(z, x, y);
-
-        string sw = Geohash.Encode(bounds.South, bounds.West, precision);
-        string ne = Geohash.Encode(bounds.North, bounds.East, precision);
-
-        // Min is the lexicographically smaller, max is the larger
-        string min = string.CompareOrdinal(sw, ne) <= 0 ? sw : ne;
-        string max = string.CompareOrdinal(sw, ne) <= 0 ? ne : sw;
-
-        return new GeohashRange(min, max);
-    }
-
-    /// <summary>
     /// Maps zoom level to geohash precision.
     /// Tuned for 4–16 prefixes per tile.
     /// </summary>
@@ -62,5 +43,3 @@ public static class TileGeohash
         };
     }
 }
-
-public readonly record struct GeohashRange(string Min, string Max);
