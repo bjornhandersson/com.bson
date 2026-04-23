@@ -11,7 +11,7 @@ public static class TimezoneFeed
 
     private static readonly string CacheFile = Path.Combine(
         AppContext.BaseDirectory,
-        "Data",
+        "Timezones",
         "timezones.geojson"
     );
 

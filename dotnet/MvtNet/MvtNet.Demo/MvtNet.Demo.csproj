@@ -5,9 +5,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="Data\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Cities\cities.csv" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Bson.MvtNet\MvtNet.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="SharpKml.Core" Version="6.1.0" />
   </ItemGroup>
 </Project>
