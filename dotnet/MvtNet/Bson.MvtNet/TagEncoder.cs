@@ -9,6 +9,7 @@ internal class TagEncoder
 {
     private readonly Dictionary<string, int> _keys = new();
     private readonly Dictionary<string, int> _stringValues = new();
+    private readonly Dictionary<float, int> _floatValues = new();
     private readonly Dictionary<double, int> _doubleValues = new();
     private readonly Dictionary<long, int> _intValues = new();
     private readonly Dictionary<bool, int> _boolValues = new();
@@ -67,7 +68,7 @@ internal class TagEncoder
             int i => GetOrAddIntValue(i),
             long l => GetOrAddIntValue(l),
             double d => GetOrAddDoubleValue(d),
-            float f => GetOrAddDoubleValue(f),
+            float f => GetOrAddFloatValue(f),
             bool b => GetOrAddBoolValue(b),
             _ => throw new ArgumentException(
                 $"Unsupported tag value type: {value.GetType().Name}",
@@ -86,6 +87,19 @@ internal class TagEncoder
         index = _valueList.Count;
         _stringValues[s] = index;
         _valueList.Add(new Tile.Types.Value { StringValue = s });
+        return index;
+    }
+
+    private int GetOrAddFloatValue(float f)
+    {
+        if (_floatValues.TryGetValue(f, out int index))
+        {
+            return index;
+        }
+
+        index = _valueList.Count;
+        _floatValues[f] = index;
+        _valueList.Add(new Tile.Types.Value { FloatValue = f });
         return index;
     }
 

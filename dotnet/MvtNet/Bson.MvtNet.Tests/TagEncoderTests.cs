@@ -42,7 +42,7 @@ public class TagEncoderTests
         var encoder = new TagEncoder();
         encoder.Encode(new Dictionary<string, object> { ["temp"] = 3.14f });
 
-        Assert.That(encoder.Values[0].DoubleValue, Is.EqualTo(3.14f).Within(0.001));
+        Assert.That(encoder.Values[0].FloatValue, Is.EqualTo(3.14f).Within(0.001));
     }
 
     [Test]
