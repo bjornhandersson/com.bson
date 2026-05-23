@@ -112,6 +112,7 @@
     <a href="/earthquakes.html">Earthquakes</a>
     <a href="/timezones.html" class="active">Timezones</a>
     <a href="/upload.html">KML Upload</a>
+    <a href="/geojson.html">GeoJSON</a>
   </div>
 
   <div id="title-bar">
@@ -154,7 +155,7 @@
         'source-layer': 'timezones',
         paint: {
           'fill-color': [
-            'interpolate', ['linear'], ['get', 'utc_offset'],
+            'interpolate', ['linear'], ['get', 'zone'],
             -12, '#f472b6',
             -6,  '#a78bfa',
             -2,  '#60a5fa',
@@ -182,8 +183,8 @@
       const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 4 });
 
       map.on('click', 'tz-fill', (e) => {
-        const { name, utc_offset } = e.features[0].properties;
-        const offset = Number(utc_offset);
+        const { name, zone } = e.features[0].properties;
+        const offset = Number(zone);
         const sign = offset >= 0 ? '+' : '';
         const label = offset % 1 === 0 ? `UTC${sign}${offset}` : `UTC${sign}${offset.toFixed(1)}`;
         popup

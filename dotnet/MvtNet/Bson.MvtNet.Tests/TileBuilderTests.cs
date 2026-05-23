@@ -106,6 +106,66 @@ public class TileBuilderTests
     }
 
     [Test]
+    public void Build_PolygonWithHole_ProducesTwoRings()
+    {
+        var outer = new (double, double)[]
+        {
+            (59.3400, 18.0300),
+            (59.3400, 18.0700),
+            (59.3200, 18.0700),
+            (59.3200, 18.0300),
+        };
+        var hole = new (double, double)[]
+        {
+            (59.3350, 18.0400),
+            (59.3350, 18.0600),
+            (59.3250, 18.0600),
+            (59.3250, 18.0400),
+        };
+
+        var bytes = new TileBuilder(Z, X, Y)
+            .Layer("geofences")
+            .AddPolygon(outer, new[] { hole }, new Dictionary<string, object> { ["name"] = "Ring" })
+            .Build();
+
+        var tile = Tile.Parser.ParseFrom(bytes);
+
+        Assert.That(tile.Layers[0].Features, Has.Count.EqualTo(1));
+        var feature = tile.Layers[0].Features[0];
+        Assert.That(feature.Type, Is.EqualTo(Tile.Types.GeomType.Polygon));
+
+        // Outer: MoveTo(1) + x + y + LineTo(3) + 3*(dx+dy) + ClosePath = 11
+        // Hole:  MoveTo(1) + x + y + LineTo(3) + 3*(dx+dy) + ClosePath = 11
+        // Total: 22
+        Assert.That(feature.Geometry, Has.Count.EqualTo(22));
+        Assert.That(tile.Layers[0].Keys, Has.Member("name"));
+    }
+
+    [Test]
+    public void Build_PolygonWithDegenerateHole_DropsHole()
+    {
+        var outer = new (double, double)[]
+        {
+            (59.3400, 18.0300),
+            (59.3400, 18.0700),
+            (59.3200, 18.0700),
+            (59.3200, 18.0300),
+        };
+        var badHole = new (double, double)[] { (59.3350, 18.0400), (59.3350, 18.0600) };
+
+        var bytes = new TileBuilder(Z, X, Y)
+            .Layer("geofences")
+            .AddPolygon(outer, new[] { badHole })
+            .Build();
+
+        var tile = Tile.Parser.ParseFrom(bytes);
+        var feature = tile.Layers[0].Features[0];
+
+        // Only the outer ring should be encoded (11 commands).
+        Assert.That(feature.Geometry, Has.Count.EqualTo(11));
+    }
+
+    [Test]
     public void Build_MultipleFeatureTypes_InSeparateLayers()
     {
         var builder = new TileBuilder(Z, X, Y);

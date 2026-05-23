@@ -98,6 +98,67 @@ internal static class GeometryEncoder
     }
 
     /// <summary>
+    /// Encodes a Polygon geometry with one or more rings. The first ring is the
+    /// outer boundary; remaining rings are holes. Rings should NOT repeat their
+    /// first point. The MVT cursor is continuous across rings; ClosePath returns
+    /// it to the start of the current ring before the next MoveTo.
+    /// </summary>
+    public static uint[] EncodePolygon(IReadOnlyList<TileCoord[]> rings)
+    {
+        if (rings.Count == 0)
+        {
+            throw new ArgumentException("Polygon requires at least one ring.", nameof(rings));
+        }
+
+        int count = 0;
+        for (int r = 0; r < rings.Count; r++)
+        {
+            var ring = rings[r];
+            if (ring.Length < 3)
+            {
+                throw new ArgumentException(
+                    "Polygon ring requires at least 3 coordinates.",
+                    nameof(rings)
+                );
+            }
+            count += 3 + 1 + (ring.Length - 1) * 2 + 1;
+        }
+
+        var commands = new uint[count];
+        int pos = 0;
+        int prevX = 0;
+        int prevY = 0;
+
+        for (int r = 0; r < rings.Count; r++)
+        {
+            var ring = rings[r];
+
+            commands[pos++] = CommandInteger(MoveToId, 1);
+            commands[pos++] = ZigZag(ring[0].X - prevX);
+            commands[pos++] = ZigZag(ring[0].Y - prevY);
+            int ringStartX = ring[0].X;
+            int ringStartY = ring[0].Y;
+            prevX = ring[0].X;
+            prevY = ring[0].Y;
+
+            commands[pos++] = CommandInteger(LineToId, (uint)(ring.Length - 1));
+            for (int i = 1; i < ring.Length; i++)
+            {
+                commands[pos++] = ZigZag(ring[i].X - prevX);
+                commands[pos++] = ZigZag(ring[i].Y - prevY);
+                prevX = ring[i].X;
+                prevY = ring[i].Y;
+            }
+
+            commands[pos++] = CommandInteger(ClosePathId, 1);
+            prevX = ringStartX;
+            prevY = ringStartY;
+        }
+
+        return commands;
+    }
+
+    /// <summary>
     /// Encodes a command integer: (id &amp; 0x7) | (count &lt;&lt; 3)
     /// </summary>
     public static uint CommandInteger(uint commandId, uint count)

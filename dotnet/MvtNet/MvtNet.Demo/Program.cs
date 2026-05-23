@@ -9,6 +9,7 @@ CitiesDemo.Map(app);
 await EarthquakesDemo.MapAsync(app);
 await TimezonesDemo.MapAsync(app);
 KmlDemo.Map(app);
+GeoJsonPasteDemo.Map(app);
 
 app.MapFallback(ctx =>
 {

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Bson.MvtNet;
 
 namespace MvtNet.Demo;
@@ -6,18 +7,20 @@ public static class TimezonesDemo
 {
     public static async Task MapAsync(WebApplication app)
     {
-        List<TimezonePolygon> timezones;
+        var file = Path.Combine(AppContext.BaseDirectory, "Timezones", "timezones.geojson");
+
+        JsonDocument? doc = null;
         try
         {
-            timezones = await TimezoneFeed.LoadAsync();
-            Console.WriteLine($"Loaded {timezones.Count} timezone polygons");
+            await using var stream = File.OpenRead(file);
+            doc = await JsonDocument.ParseAsync(stream);
+            Console.WriteLine("Loaded timezone GeoJSON");
         }
         catch (Exception ex)
         {
             Console.WriteLine(
                 $"Warning: could not load timezone data ({ex.Message}), timezone demo will be empty"
             );
-            timezones = [];
         }
 
         app.MapGet(
@@ -25,20 +28,10 @@ public static class TimezonesDemo
             (int z, int x, int y) =>
             {
                 var tile = new TileBuilder(z, x, y);
-                var layer = tile.Layer("timezones");
-
-                foreach (var tz in timezones)
+                if (doc is not null)
                 {
-                    layer.AddPolygon(
-                        tz.Ring,
-                        new Dictionary<string, object>
-                        {
-                            ["name"] = tz.Name,
-                            ["utc_offset"] = tz.UtcOffset,
-                        }
-                    );
+                    tile.Layer("timezones").AddGeoJson(doc.RootElement);
                 }
-
                 return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
             }
         );

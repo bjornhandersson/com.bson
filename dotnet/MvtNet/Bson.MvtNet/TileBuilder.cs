@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Google.Protobuf;
 using VectorTile;
 
@@ -198,6 +199,108 @@ public class LayerBuilder
         }
 
         _features.Add(feature);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a Polygon feature with one or more holes. The outer ring and each
+    /// hole should NOT repeat the first point. Rings with fewer than 3 points
+    /// are silently dropped; if the outer ring is invalid the whole feature is
+    /// skipped.
+    /// </summary>
+    public LayerBuilder AddPolygon(
+        ReadOnlySpan<(double Lat, double Lng)> outer,
+        IReadOnlyList<(double Lat, double Lng)[]> holes,
+        IEnumerable<KeyValuePair<string, object>>? attributes = null
+    )
+    {
+        if (outer.Length < 3)
+        {
+            return this;
+        }
+
+        if (!OverlapsTile(outer))
+        {
+            return this;
+        }
+
+        var rings = new List<TileCoord[]>(1 + holes.Count) { ProjectAll(outer) };
+        for (int i = 0; i < holes.Count; i++)
+        {
+            var hole = holes[i];
+            if (hole.Length < 3)
+            {
+                continue;
+            }
+            rings.Add(ProjectAll(hole));
+        }
+
+        var feature = new Tile.Types.Feature { Id = _nextId++, Type = Tile.Types.GeomType.Polygon };
+        feature.Geometry.AddRange(GeometryEncoder.EncodePolygon(rings));
+
+        if (attributes is not null)
+        {
+            feature.Tags.AddRange(_tags.Encode(attributes));
+        }
+
+        _features.Add(feature);
+        return this;
+    }
+
+    /// <summary>
+    /// Ingests a GeoJSON document (FeatureCollection, Feature, or bare geometry)
+    /// and adds each feature to this layer. Top-level scalar `properties` become
+    /// MVT tags; nested objects, arrays, and source feature ids are dropped.
+    /// Multi-geometries and GeometryCollection are flattened to N MVT features
+    /// sharing the same tags. Malformed input is silently skipped.
+    /// </summary>
+    public LayerBuilder AddGeoJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return this;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            GeoJsonReader.Read(this, doc.RootElement);
+        }
+        catch (JsonException)
+        {
+            // skip malformed input
+        }
+
+        return this;
+    }
+
+    /// <summary>
+    /// Ingests a GeoJSON document from a UTF-8 stream. See AddGeoJson(string)
+    /// for semantics.
+    /// </summary>
+    public LayerBuilder AddGeoJson(Stream utf8Json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(utf8Json);
+            GeoJsonReader.Read(this, doc.RootElement);
+        }
+        catch (JsonException)
+        {
+            // skip malformed input
+        }
+
+        return this;
+    }
+
+    /// <summary>
+    /// Ingests a GeoJSON document from an already-parsed JsonElement. Use this
+    /// path to avoid re-parsing the same document across many tile builds.
+    /// See AddGeoJson(string) for semantics.
+    /// </summary>
+    public LayerBuilder AddGeoJson(JsonElement element)
+    {
+        GeoJsonReader.Read(this, element);
         return this;
     }
 
