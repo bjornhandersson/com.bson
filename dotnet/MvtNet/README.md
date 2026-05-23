@@ -75,6 +75,16 @@ tile.Layer("zones").AddPolygon(new (double, double)[]
 });
 ```
 
+## Already got GeoJSON?
+
+Pass it to `AddGeoJson`:
+
+```csharp
+var tile = new TileBuilder(z, x, y);
+tile.Layer("data").AddGeoJson(geoJson);
+return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
+```
+
 ## Query millions of rows without PostGIS
 
 Got a geohash column? `TileGeohash` gives you the exact prefixes to query — turns a tile request into a fast index scan.
@@ -110,4 +120,5 @@ app.MapGet("/tiles/{z:int}/{x:int}/{y:int}", async (int z, int x, int y, DbConne
 - **Projection** — WGS84 lat/lng to tile pixel coordinates
 - **Clipping** — lines crossing tile boundaries are cut cleanly
 - **Encoding** — MVT spec v2.1 protobuf, delta-encoded geometry, interned tags
+- **GeoJSON ingestion** — drop a whole `FeatureCollection` onto a layer in one call
 - **Geohash bridge** — tile z/x/y to geohash prefixes for indexed DB queries

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MvtNet — GeoJSON Paste</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+
+    #layout { display: flex; height: 100vh; }
+    #sidebar {
+      width: 420px;
+      flex-shrink: 0;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid rgba(255,255,255,0.08);
+    }
+    #map-container { flex: 1; position: relative; }
+    #map { width: 100%; height: 100%; }
+
+    .sidebar-header {
+      padding: 18px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .sidebar-header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin-bottom: 4px;
+    }
+    .sidebar-header h1 span { color: #38bdf8; }
+    .sidebar-header p {
+      font-size: 12px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    .sidebar-editor {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 14px 16px 0;
+      min-height: 0;
+    }
+    #geojson-input {
+      flex: 1;
+      background: #020617;
+      color: #e2e8f0;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      resize: none;
+      outline: none;
+      tab-size: 2;
+    }
+    #geojson-input:focus { border-color: rgba(56,189,248,0.4); }
+
+    .sidebar-footer {
+      padding: 14px 16px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    #render-btn {
+      background: #38bdf8;
+      color: #0f172a;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    #render-btn:hover { background: #7dd3fc; }
+    #render-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #status {
+      font-size: 12px;
+      color: #94a3b8;
+      flex: 1;
+    }
+    #status.error { color: #fca5a5; }
+    #status .count { color: #38bdf8; font-weight: 600; }
+
+    #demo-nav {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 8px 14px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      z-index: 1;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    }
+    #demo-nav a {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+    #demo-nav a:hover { color: #e2e8f0; background: rgba(255,255,255,0.06); }
+    #demo-nav a.active { color: #38bdf8; background: rgba(56,189,248,0.12); }
+    #demo-nav a.home { font-weight: 600; color: #f1f5f9; }
+
+    .maplibregl-popup-content {
+      background: rgba(15, 23, 42, 0.92);
+      color: #f1f5f9;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      max-width: 280px;
+    }
+    .maplibregl-popup-tip { border-top-color: rgba(15, 23, 42, 0.92); }
+    .popup-row { margin: 2px 0; }
+    .popup-key { color: #94a3b8; font-size: 11px; }
+    .popup-val { color: #f1f5f9; }
+  </style>
+</head>
+<body>
+  <div id="layout">
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <h1><span>MvtNet</span> &mdash; GeoJSON Paste</h1>
+        <p>Paste any GeoJSON below and hit Render. The text is shipped to the server, parsed once with <code>AddGeoJson</code>, and served as vector tiles.</p>
+      </div>
+      <div class="sidebar-editor">
+        <textarea id="geojson-input" spellcheck="false"></textarea>
+      </div>
+      <div class="sidebar-footer">
+        <button id="render-btn">Render</button>
+        <div id="status">Paste GeoJSON, then click Render</div>
+      </div>
+    </aside>
+
+    <div id="map-container">
+      <div id="map"></div>
+      <div id="demo-nav">
+        <a href="/" class="home">MvtNet</a>
+        <a href="/cities.html">Cities</a>
+        <a href="/earthquakes.html">Earthquakes</a>
+        <a href="/timezones.html">Timezones</a>
+        <a href="/upload.html">KML Upload</a>
+        <a href="/geojson.html" class="active">GeoJSON</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SAMPLE = `{ "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [102.0, 0.5]},
+      "properties": {"prop0": "value0"}
+      },
+    { "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [102.0, 0.0], [103.0, 1.0], [104.0, 0.0], [105.0, 1.0]
+          ]
+        },
+      "properties": {
+        "prop0": "value0",
+        "prop1": 0.0
+        }
+      },
+    { "type": "Feature",
+       "geometry": {
+         "type": "Polygon",
+         "coordinates": [
+           [ [100.0, 0.0], [101.0, 0.0], [101.0, 1.0],
+             [100.0, 1.0], [100.0, 0.0] ]
+           ]
+
+       },
+       "properties": {
+         "prop0": "value0",
+         "prop1": {"this": "that"}
+         }
+       }
+    ]
+  }`;
+
+    const input = document.getElementById('geojson-input');
+    const renderBtn = document.getElementById('render-btn');
+    const statusEl = document.getElementById('status');
+    input.value = SAMPLE;
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+      center: [18.07, 59.33],
+      zoom: 11,
+      attributionControl: true
+    });
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+    let tileVersion = 0;
+    const tileUrl = () => `${window.location.origin}/tiles/geojson/{z}/{x}/{y}?v=${tileVersion}`;
+
+    map.on('load', () => {
+      map.addSource('geojson', {
+        type: 'vector',
+        tiles: [tileUrl()],
+        minzoom: 0,
+        maxzoom: 18
+      });
+
+      map.addLayer({
+        id: 'gj-polygon-fill',
+        type: 'fill',
+        source: 'geojson',
+        'source-layer': 'geojson',
+        filter: ['==', '$type', 'Polygon'],
+        paint: { 'fill-color': '#38bdf8', 'fill-opacity': 0.25 }
+      });
+      map.addLayer({
+        id: 'gj-polygon-stroke',
+        type: 'line',
+        source: 'geojson',
+        'source-layer': 'geojson',
+        filter: ['==', '$type', 'Polygon'],
+        paint: { 'line-color': '#38bdf8', 'line-width': 1.5 }
+      });
+      map.addLayer({
+        id: 'gj-line',
+        type: 'line',
+        source: 'geojson',
+        'source-layer': 'geojson',
+        filter: ['==', '$type', 'LineString'],
+        paint: { 'line-color': '#fbbf24', 'line-width': 2.5 }
+      });
+      map.addLayer({
+        id: 'gj-point',
+        type: 'circle',
+        source: 'geojson',
+        'source-layer': 'geojson',
+        filter: ['==', '$type', 'Point'],
+        paint: {
+          'circle-radius': 5,
+          'circle-color': '#f472b6',
+          'circle-stroke-color': '#fff',
+          'circle-stroke-width': 1.5
+        }
+      });
+
+      const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, offset: 10 });
+
+      ['gj-polygon-fill', 'gj-line', 'gj-point'].forEach(id => {
+        map.on('click', id, (e) => {
+          const props = e.features[0].properties || {};
+          const entries = Object.entries(props);
+          if (!entries.length) { return; }
+          const html = entries
+            .map(([k, v]) => `<div class="popup-row"><span class="popup-key">${escapeHtml(k)}</span> <span class="popup-val">${escapeHtml(String(v))}</span></div>`)
+            .join('');
+          popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
+        });
+        map.on('mouseenter', id, () => map.getCanvas().style.cursor = 'pointer');
+        map.on('mouseleave', id, () => map.getCanvas().style.cursor = '');
+      });
+
+      // Auto-render the prefilled sample on load.
+      render();
+    });
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function setStatus(msg, isError) {
+      statusEl.textContent = msg;
+      statusEl.classList.toggle('error', !!isError);
+    }
+
+    async function render() {
+      const text = input.value.trim();
+      if (!text) {
+        setStatus('Textarea is empty', true);
+        return;
+      }
+
+      renderBtn.disabled = true;
+      setStatus('Sending…');
+      let res;
+      try {
+        res = await fetch('/geojson', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: text
+        });
+      } catch (e) {
+        setStatus('Network error: ' + e.message, true);
+        renderBtn.disabled = false;
+        return;
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        setStatus('Parse failed: ' + (err.error || res.statusText), true);
+        renderBtn.disabled = false;
+        return;
+      }
+
+      const data = await res.json();
+
+      tileVersion++;
+      map.getSource('geojson').setTiles([tileUrl()]);
+
+      if (data.bounds) {
+        map.fitBounds(
+          [[data.bounds[0], data.bounds[1]], [data.bounds[2], data.bounds[3]]],
+          { padding: 60, duration: 600, maxZoom: 14 }
+        );
+      }
+
+      setStatus(`Rendered ${data.features} feature${data.features === 1 ? '' : 's'}`);
+      renderBtn.disabled = false;
+    }
+
+    renderBtn.addEventListener('click', render);
+    input.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        render();
+      }
+    });
+  </script>
+</body>
+</html>
