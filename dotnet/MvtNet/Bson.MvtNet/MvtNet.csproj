@@ -4,7 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>Bson.MvtNet</PackageId>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
     <Authors>bson</Authors>
     <Description>Encode WGS84 geographic features into Mapbox Vector Tiles (MVT spec v2.1)</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -13,10 +13,10 @@
     <RepositoryUrl>https://github.com/bjornhandersson/com.bson</RepositoryUrl>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Google.Protobuf" Version="3.*" />
+    <PackageReference Include="Google.Protobuf" Version="3.13.0" />
     <PackageReference
       Include="Grpc.Tools"
-      Version="2.*"
+      Version="2.83.0"
       PrivateAssets="all"
       Condition="'$(SKIP_PROTOC)' != 'true'"
     />
