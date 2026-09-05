@@ -1,0 +1,81 @@
+name: Create GitHub Release
+description: >
+  Tags the commit and creates a GitHub Release for a package that was just
+  pushed to NuGet. Attaches the .nupkg/.snupkg files. Release notes come from
+  the "### <version>" section of the package README when one exists, otherwise
+  from the commits touching the package since its previous release.
+
+inputs:
+  name:
+    description: Short name used in the tag, e.g. MvtNet -> MvtNet-v1.2.2
+    required: true
+  package-id:
+    description: NuGet package id, e.g. Bson.MvtNet
+    required: true
+  csproj:
+    description: Path to the .csproj holding <Version>
+    required: true
+  readme:
+    description: Path to a README with "### <version>" release note sections (optional)
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Create release
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        NAME: ${{ inputs.name }}
+        PACKAGE_ID: ${{ inputs.package-id }}
+        CSPROJ: ${{ inputs.csproj }}
+        README: ${{ inputs.readme }}
+      run: |
+        set -euo pipefail
+        shopt -s nullglob
+
+        VERSION=$(grep -oP '(?<=<Version>).*(?=</Version>)' "$CSPROJ")
+        TAG="${NAME}-v${VERSION}"
+        PKG_DIR=$(dirname "$CSPROJ")
+        PREV=$(git tag -l "${NAME}-v*" --sort=-v:refname | head -n1)
+
+        NOTES=$(mktemp)
+        {
+          echo "NuGet: https://www.nuget.org/packages/${PACKAGE_ID}/${VERSION}"
+          echo
+
+          # Prefer hand-written notes from the README "### <version>" section.
+          SECTION=""
+          if [ -n "$README" ] && [ -f "$README" ]; then
+            # Print the section body with leading and trailing blank lines removed.
+            SECTION=$(awk -v v="$VERSION" '
+              $0 == "### " v { on = 1; next }
+              on && /^(### |## )/ { exit }
+              on && !/./ { if (started) pending++; next }
+              on { for (; pending > 0; pending--) print ""; started = 1; print }
+            ' "$README")
+          fi
+
+          if [ -n "$SECTION" ]; then
+            echo "$SECTION"
+          elif [ -n "$PREV" ]; then
+            echo "## Changes"
+            echo
+            git log "${PREV}..HEAD" --no-merges --format='- %s (%h)' -- "$PKG_DIR"
+          else
+            echo "First release published from GitHub Actions."
+          fi
+
+          if [ -n "$PREV" ]; then
+            echo
+            echo "Full diff: https://github.com/${GITHUB_REPOSITORY}/compare/${PREV}...${TAG}"
+          fi
+        } > "$NOTES"
+
+        gh release create "$TAG" \
+          --repo "$GITHUB_REPOSITORY" \
+          --target "$GITHUB_SHA" \
+          --title "${PACKAGE_ID} ${VERSION}" \
+          --notes-file "$NOTES" \
+          "$PKG_DIR"/bin/Release/*.nupkg "$PKG_DIR"/bin/Release/*.snupkg

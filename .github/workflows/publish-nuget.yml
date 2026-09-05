@@ -80,8 +80,12 @@ jobs:
     needs: [detect-changes, test-mvtnet]
     if: needs.detect-changes.outputs.mvtnet == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
@@ -94,13 +98,24 @@ jobs:
           fi
       - run: dotnet pack dotnet/MvtNet/Bson.MvtNet/MvtNet.csproj -c Release
       - run: dotnet nuget push dotnet/MvtNet/Bson.MvtNet/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+      - name: Create GitHub Release
+        uses: ./.github/actions/github-release
+        with:
+          name: MvtNet
+          package-id: Bson.MvtNet
+          csproj: dotnet/MvtNet/Bson.MvtNet/MvtNet.csproj
+          readme: dotnet/MvtNet/README.md
 
   publish-dispatcher:
     needs: [detect-changes, test-dispatcher]
     if: needs.detect-changes.outputs.dispatcher == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
@@ -113,13 +128,23 @@ jobs:
           fi
       - run: dotnet pack dotnet/Dispatcher/Bson.Dispatcher/Dispatcher.csproj -c Release
       - run: dotnet nuget push dotnet/Dispatcher/Bson.Dispatcher/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+      - name: Create GitHub Release
+        uses: ./.github/actions/github-release
+        with:
+          name: Dispatcher
+          package-id: Bson.Dispatcher
+          csproj: dotnet/Dispatcher/Bson.Dispatcher/Dispatcher.csproj
 
   publish-hilbert:
     needs: [detect-changes, test-hilbert]
     if: needs.detect-changes.outputs.hilbert == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
@@ -132,3 +157,9 @@ jobs:
           fi
       - run: dotnet pack dotnet/HilbertIndex/Bson.HilbertIndex/Bson.HilbertIndex.csproj -c Release
       - run: dotnet nuget push dotnet/HilbertIndex/Bson.HilbertIndex/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+      - name: Create GitHub Release
+        uses: ./.github/actions/github-release
+        with:
+          name: HilbertIndex
+          package-id: Bson.HilbertIndex
+          csproj: dotnet/HilbertIndex/Bson.HilbertIndex/Bson.HilbertIndex.csproj

@@ -83,4 +83,4 @@ Same key = sequential. Different keys = parallel. Configurable partitions, backp
 
 ## License
 
-MIT
+[MIT](LICENSE)
