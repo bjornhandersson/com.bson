@@ -1,5 +1,9 @@
 # MvtNet
 
+[![NuGet](https://img.shields.io/nuget/v/Bson.MvtNet?label=nuget)](https://www.nuget.org/packages/Bson.MvtNet)
+[![CI](https://github.com/bjornhandersson/com.bson/actions/workflows/ci.yml/badge.svg)](https://github.com/bjornhandersson/com.bson/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/bjornhandersson/com.bson/blob/master/LICENSE)
+
 Encode [Mapbox Vector Tiles](https://github.com/mapbox/vector-tile-spec) from plain C#. No GIS stack, no PostGIS, no Mapnik.
 
 ```
@@ -14,6 +18,10 @@ return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
 
 Projection, clipping, and encoding happen automatically. To skip the intermediate
 byte array, write straight to a stream with `tile.Build(response.Body)`.
+
+[![10,000 cities served as vector tiles by MvtNet](https://raw.githubusercontent.com/bjornhandersson/com.bson/master/docs/img/mvtnet-cities.jpg)](https://github.com/bjornhandersson/com.bson/tree/master/dotnet/MvtNet/MvtNet.Demo)
+
+<p align="center"><em>10,000 cities encoded on the fly and rendered with MapLibre. Run it yourself with <code>dotnet run --project MvtNet.Demo</code>.</em></p>
 
 ## Show 100k delivery trucks on a map
 

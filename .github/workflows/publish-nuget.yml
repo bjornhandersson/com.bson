@@ -31,8 +31,53 @@ jobs:
             hilbert:
               - "dotnet/HilbertIndex/Bson.HilbertIndex/**"
 
-  publish-mvtnet:
+  test-mvtnet:
+    name: test (MvtNet)
     needs: detect-changes
+    if: needs.detect-changes.outputs.mvtnet == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Test
+        run: dotnet test dotnet/MvtNet/MvtNet.slnx -c Release
+
+  test-dispatcher:
+    name: test (Dispatcher)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.dispatcher == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Test
+        run: dotnet test dotnet/Dispatcher/Dispatcher.sln -c Release
+
+  test-hilbert:
+    name: test (HilbertIndex)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.hilbert == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Test
+        run: dotnet test dotnet/HilbertIndex/HilbertIndex.sln -c Release
+
+  publish-mvtnet:
+    needs: [detect-changes, test-mvtnet]
     if: needs.detect-changes.outputs.mvtnet == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -51,7 +96,7 @@ jobs:
       - run: dotnet nuget push dotnet/MvtNet/Bson.MvtNet/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
 
   publish-dispatcher:
-    needs: detect-changes
+    needs: [detect-changes, test-dispatcher]
     if: needs.detect-changes.outputs.dispatcher == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -70,7 +115,7 @@ jobs:
       - run: dotnet nuget push dotnet/Dispatcher/Bson.Dispatcher/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
 
   publish-hilbert:
-    needs: detect-changes
+    needs: [detect-changes, test-hilbert]
     if: needs.detect-changes.outputs.hilbert == 'true'
     runs-on: ubuntu-latest
     steps:

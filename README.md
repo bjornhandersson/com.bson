@@ -5,6 +5,7 @@ Open-source libraries for geospatial indexing, concurrent processing, and map ti
 [![NuGet](https://img.shields.io/nuget/v/Bson.MvtNet?label=MvtNet)](https://www.nuget.org/packages/Bson.MvtNet)
 [![NuGet](https://img.shields.io/nuget/v/Bson.HilbertIndex?label=HilbertIndex)](https://www.nuget.org/packages/Bson.HilbertIndex)
 [![NuGet](https://img.shields.io/nuget/v/Bson.Dispatcher?label=Dispatcher)](https://www.nuget.org/packages/Bson.Dispatcher)
+[![CI](https://github.com/bjornhandersson/com.bson/actions/workflows/ci.yml/badge.svg)](https://github.com/bjornhandersson/com.bson/actions/workflows/ci.yml)
 
 ---
 
