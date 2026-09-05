@@ -30,7 +30,7 @@ public class PolygonClippingTests
             (59.3270, 18.0430),
         };
 
-        var bytes = new TileBuilder(Z, X, Y).Layer("blocks").AddPolygon(ring).Build();
+        var bytes = new TileBuilder(Z, X, Y).Layer("blocks").AddPolygon(ring).Tile.Build();
         var rings = RingsOf(bytes);
 
         Assert.That(rings, Has.Count.EqualTo(1));
@@ -46,7 +46,7 @@ public class PolygonClippingTests
         // 16-bit vertex buffers renderers use, drawing wedges across the tile.
         var ring = new[] { (85.0, 17.0), (85.0, 19.0), (-85.0, 19.0), (-85.0, 17.0) };
 
-        var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(ring).Build();
+        var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(ring).Tile.Build();
         var rings = RingsOf(bytes);
 
         Assert.That(rings, Has.Count.EqualTo(1));
@@ -62,7 +62,7 @@ public class PolygonClippingTests
     {
         var ring = new[] { (60.0, 17.0), (60.0, 19.0), (58.0, 19.0), (58.0, 17.0) };
 
-        var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(ring).Build();
+        var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(ring).Tile.Build();
         var rings = RingsOf(bytes);
 
         Assert.That(rings, Has.Count.EqualTo(1));
@@ -78,7 +78,7 @@ public class PolygonClippingTests
     {
         var ring = new[] { (60.0, 17.0), (60.0, 19.0), (58.0, 19.0), (58.0, 17.0) };
 
-        var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(ring).Build();
+        var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(ring).Tile.Build();
         var rings = RingsOf(bytes);
 
         // MVT requires a positive signed area for exterior rings.
@@ -107,7 +107,7 @@ public class PolygonClippingTests
             },
         };
 
-        var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(outer, faraway).Build();
+        var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(outer, faraway).Tile.Build();
         var rings = RingsOf(bytes);
 
         Assert.That(rings, Has.Count.EqualTo(1), "the out-of-tile hole should be dropped");
@@ -134,7 +134,7 @@ public class PolygonClippingTests
             },
         };
 
-        var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(outer, holes).Build();
+        var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(outer, holes).Tile.Build();
         var rings = RingsOf(bytes);
 
         Assert.That(rings, Has.Count.EqualTo(2));
@@ -147,7 +147,7 @@ public class PolygonClippingTests
     {
         var ring = new[] { (0.0, -30.0), (0.0, -29.0), (-1.0, -29.0), (-1.0, -30.0) };
 
-        var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(ring).Build();
+        var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(ring).Tile.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
 
         // The layer itself is created by calling Layer(); what matters is that

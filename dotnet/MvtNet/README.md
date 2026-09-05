@@ -39,7 +39,7 @@ app.MapGet("/tiles/{z:int}/{x:int}/{y:int}", async (int z, int x, int y, FleetDb
         });
     }
 
-    return Results.Bytes(layer.Build(), "application/vnd.mapbox-vector-tile");
+    return Results.Bytes(layer.Tile.Build(), "application/vnd.mapbox-vector-tile");
 });
 ```
 
@@ -124,7 +124,7 @@ app.MapGet("/tiles/{z:int}/{x:int}/{y:int}", async (int z, int x, int y, DbConne
 ## What it handles for you
 
 - **Projection** — WGS84 lat/lng to tile pixel coordinates
-- **Clipping** — lines crossing tile boundaries are cut cleanly
+- **Clipping** — lines and polygon rings crossing tile boundaries are cut cleanly, so oversized geometry never reaches the renderer
 - **Encoding** — MVT spec v2.1 protobuf, delta-encoded geometry, interned tags
 - **Attributes** — string, bool, integers, float/double, decimal and enums become tags; null values are dropped
 - **Winding order** — polygon rings are normalized to the spec's orientation (exterior clockwise, holes counter-clockwise), whatever order you pass them in

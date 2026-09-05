@@ -12,6 +12,7 @@
     <PackageTags>mvt;mapbox;vector-tiles;gis;maps</PackageTags>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/bjornhandersson/com.bson</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/bjornhandersson/com.bson</PackageProjectUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>

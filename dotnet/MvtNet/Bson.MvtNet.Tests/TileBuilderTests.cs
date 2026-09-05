@@ -380,7 +380,7 @@ public class TileBuilderTests
             (59.3400, 18.0700),
         };
 
-        var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddPolygon(ccwOuter).Build();
+        var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddPolygon(ccwOuter).Tile.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
 
         var rings = TestGeometry.DecodeRings(tile.Layers[0].Features[0].Geometry);
@@ -399,7 +399,7 @@ public class TileBuilderTests
             (59.3200, 18.0300),
         };
 
-        var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddPolygon(cwOuter).Build();
+        var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddPolygon(cwOuter).Tile.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
 
         var rings = TestGeometry.DecodeRings(tile.Layers[0].Features[0].Geometry);
@@ -448,7 +448,7 @@ public class TileBuilderTests
             ]}
             """;
 
-        var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddGeoJson(json).Build();
+        var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddGeoJson(json).Tile.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
 
         var rings = TestGeometry.DecodeRings(tile.Layers[0].Features[0].Geometry);
@@ -492,12 +492,12 @@ public class TileBuilderTests
             (59.3320000, 18.0550000),
         };
 
-        var fromList = new TileBuilder(Z, X, Y).Layer("tracks").AddLineString(points).Build();
+        var fromList = new TileBuilder(Z, X, Y).Layer("tracks").AddLineString(points).Tile.Build();
         var fromLinq = new TileBuilder(Z, X, Y)
             .Layer("tracks")
             .AddLineString(points.Select(p => (p.Lat, p.Lng)))
             .Build();
-        var fromArray = new TileBuilder(Z, X, Y).Layer("tracks").AddLineString(points.ToArray()).Build();
+        var fromArray = new TileBuilder(Z, X, Y).Layer("tracks").AddLineString(points.ToArray()).Tile.Build();
 
         Assert.That(Tile.Parser.ParseFrom(fromList).Layers[0].Features, Has.Count.EqualTo(1));
         Assert.That(fromLinq, Is.EqualTo(fromList));
@@ -525,7 +525,7 @@ public class TileBuilderTests
             },
         };
 
-        var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddPolygon(outer, holes).Build();
+        var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddPolygon(outer, holes).Tile.Build();
 
         var rings = TestGeometry.DecodeRings(Tile.Parser.ParseFrom(bytes).Layers[0].Features[0].Geometry);
         Assert.That(rings, Has.Count.EqualTo(2));

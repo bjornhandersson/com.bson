@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Google.Protobuf;
 using VectorTile;
+// The generated MVT message type, aliased so LayerBuilder.Tile can keep its name.
+using ProtoTile = VectorTile.Tile;
 
 namespace Bson.MvtNet;
 
@@ -97,9 +99,9 @@ public sealed class TileBuilder
         BuildMessage().WriteTo(output);
     }
 
-    private Tile BuildMessage()
+    private ProtoTile BuildMessage()
     {
-        var tile = new Tile();
+        var tile = new ProtoTile();
 
         foreach (var layer in _layers.Values)
         {
@@ -124,7 +126,7 @@ public sealed class LayerBuilder
     private readonly uint _extent;
     private readonly TileProjectionContext _ctx;
     private readonly TagEncoder _tags = new();
-    private readonly List<Tile.Types.Feature> _features = new();
+    private readonly List<ProtoTile.Types.Feature> _features = new();
     private ulong _nextId = 1;
     private readonly TileBuilder _tile;
 
@@ -154,7 +156,7 @@ public sealed class LayerBuilder
 
         var coord = TileMath.ProjectWithContext(lat, lng, _ctx);
 
-        var feature = new Tile.Types.Feature { Id = _nextId++, Type = Tile.Types.GeomType.Point };
+        var feature = new ProtoTile.Types.Feature { Id = _nextId++, Type = ProtoTile.Types.GeomType.Point };
 
         feature.Geometry.AddRange(GeometryEncoder.EncodePoint(coord.X, coord.Y));
 
@@ -255,7 +257,7 @@ public sealed class LayerBuilder
 
         GeometryEncoder.Orient(tileCoords, exterior: true);
 
-        var feature = new Tile.Types.Feature { Id = _nextId++, Type = Tile.Types.GeomType.Polygon };
+        var feature = new ProtoTile.Types.Feature { Id = _nextId++, Type = ProtoTile.Types.GeomType.Polygon };
 
         feature.Geometry.AddRange(GeometryEncoder.EncodePolygon(tileCoords));
 
@@ -330,7 +332,7 @@ public sealed class LayerBuilder
             rings.Add(holeCoords);
         }
 
-        var feature = new Tile.Types.Feature { Id = _nextId++, Type = Tile.Types.GeomType.Polygon };
+        var feature = new ProtoTile.Types.Feature { Id = _nextId++, Type = ProtoTile.Types.GeomType.Polygon };
         feature.Geometry.AddRange(GeometryEncoder.EncodePolygon(rings));
 
         if (attributes is not null)
@@ -457,10 +459,10 @@ public sealed class LayerBuilder
 
     private void AddLineFeature(TileCoord[] coords, uint[]? encodedTags)
     {
-        var feature = new Tile.Types.Feature
+        var feature = new ProtoTile.Types.Feature
         {
             Id = _nextId++,
-            Type = Tile.Types.GeomType.Linestring,
+            Type = ProtoTile.Types.GeomType.Linestring,
         };
 
         feature.Geometry.AddRange(GeometryEncoder.EncodeLineString(coords));
@@ -474,19 +476,30 @@ public sealed class LayerBuilder
     }
 
     /// <summary>
-    /// Builds the tile. Shortcut for calling Build() on the parent TileBuilder.
+    /// The tile this layer belongs to. Use it to add further layers, or to
+    /// serialize once every layer is populated: <c>layer.Tile.Build()</c>.
     /// </summary>
+    public TileBuilder Tile => _tile;
+
+    /// <summary>
+    /// Builds the whole tile, not just this layer.
+    /// </summary>
+    [Obsolete(
+        "Builds the entire tile, not just this layer, which is the opposite of how it reads. Use Tile.Build() instead."
+    )]
     public byte[] Build() => _tile.Build();
 
     /// <summary>
-    /// Builds the tile into a stream. Shortcut for calling Build(Stream) on the
-    /// parent TileBuilder.
+    /// Builds the whole tile into a stream, not just this layer.
     /// </summary>
+    [Obsolete(
+        "Builds the entire tile, not just this layer, which is the opposite of how it reads. Use Tile.Build(output) instead."
+    )]
     public void Build(Stream output) => _tile.Build(output);
 
-    internal Tile.Types.Layer BuildLayer()
+    internal ProtoTile.Types.Layer BuildLayer()
     {
-        var layer = new Tile.Types.Layer
+        var layer = new ProtoTile.Types.Layer
         {
             Name = _name,
             Version = 2,
