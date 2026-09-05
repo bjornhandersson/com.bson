@@ -7,8 +7,6 @@ namespace Bson.MvtNet;
 /// </summary>
 internal static class LineClipper
 {
-    private const double DefaultBufferFraction = 0.05;
-
     /// <summary>
     /// Clips a projected LineString to the tile extent plus a buffer margin.
     /// Returns zero or more clipped segments.
@@ -16,7 +14,7 @@ internal static class LineClipper
     public static List<TileCoord[]> Clip(
         TileCoord[] coords,
         uint extent,
-        double bufferFraction = DefaultBufferFraction
+        double bufferFraction = TileMath.DefaultClipBufferFraction
     )
     {
         double buffer = extent * bufferFraction;

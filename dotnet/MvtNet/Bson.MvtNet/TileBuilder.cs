@@ -216,8 +216,8 @@ public sealed class LayerBuilder
     /// Adds a Polygon feature from WGS84 coordinates (outer ring only for now).
     /// The ring should NOT repeat the first point and may be given in either
     /// winding order; it is normalized to the orientation the MVT spec requires.
-    /// All coordinates are projected (even outside tile bounds) so polygons crossing
-    /// tile boundaries render correctly.
+    /// The ring is clipped to the tile plus a small buffer, so polygons crossing
+    /// tile boundaries render correctly and never emit runaway coordinates.
     /// </summary>
     public LayerBuilder AddPolygon(
         IEnumerable<(double Lat, double Lng)> ring,
@@ -237,7 +237,13 @@ public sealed class LayerBuilder
             return this;
         }
 
-        var tileCoords = ProjectAll(points);
+        var tileCoords = PolygonClipper.Clip(ProjectAll(points), _extent);
+
+        if (tileCoords.Length < 3)
+        {
+            return this;
+        }
+
         GeometryEncoder.Orient(tileCoords, exterior: true);
 
         var feature = new Tile.Types.Feature { Id = _nextId++, Type = Tile.Types.GeomType.Polygon };
@@ -280,7 +286,13 @@ public sealed class LayerBuilder
             return this;
         }
 
-        var outerCoords = ProjectAll(outerPoints);
+        var outerCoords = PolygonClipper.Clip(ProjectAll(outerPoints), _extent);
+
+        if (outerCoords.Length < 3)
+        {
+            return this;
+        }
+
         GeometryEncoder.Orient(outerCoords, exterior: true);
 
         var rings = new List<TileCoord[]> { outerCoords };
@@ -291,7 +303,14 @@ public sealed class LayerBuilder
             {
                 continue;
             }
-            var holeCoords = ProjectAll(hole);
+
+            // A hole clipped away entirely just means it lay outside this tile.
+            var holeCoords = PolygonClipper.Clip(ProjectAll(hole), _extent);
+            if (holeCoords.Length < 3)
+            {
+                continue;
+            }
+
             GeometryEncoder.Orient(holeCoords, exterior: false);
             rings.Add(holeCoords);
         }

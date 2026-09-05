@@ -8,6 +8,13 @@ internal static class TileMath
     public const uint DefaultExtent = 4096;
 
     /// <summary>
+    /// Fraction of the extent kept outside the tile when clipping geometry, so
+    /// strokes and fills meet cleanly across tile seams instead of ending at the
+    /// exact edge.
+    /// </summary>
+    internal const double DefaultClipBufferFraction = 0.05;
+
+    /// <summary>
     /// Returns the WGS84 bounding box for a tile at the given z/x/y.
     /// </summary>
     public static TileBounds GetTileBounds(int z, int x, int y)

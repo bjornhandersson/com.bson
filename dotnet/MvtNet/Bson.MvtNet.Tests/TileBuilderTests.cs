@@ -383,7 +383,7 @@ public class TileBuilderTests
         var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddPolygon(ccwOuter).Build();
         var tile = Tile.Parser.ParseFrom(bytes);
 
-        var rings = DecodeRings(tile.Layers[0].Features[0].Geometry);
+        var rings = TestGeometry.DecodeRings(tile.Layers[0].Features[0].Geometry);
         Assert.That(rings, Has.Count.EqualTo(1));
         Assert.That(GeometryEncoder.SignedArea(rings[0]), Is.Positive);
     }
@@ -402,7 +402,7 @@ public class TileBuilderTests
         var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddPolygon(cwOuter).Build();
         var tile = Tile.Parser.ParseFrom(bytes);
 
-        var rings = DecodeRings(tile.Layers[0].Features[0].Geometry);
+        var rings = TestGeometry.DecodeRings(tile.Layers[0].Features[0].Geometry);
         Assert.That(GeometryEncoder.SignedArea(rings[0]), Is.Positive);
     }
 
@@ -431,7 +431,7 @@ public class TileBuilderTests
             .Build();
         var tile = Tile.Parser.ParseFrom(bytes);
 
-        var rings = DecodeRings(tile.Layers[0].Features[0].Geometry);
+        var rings = TestGeometry.DecodeRings(tile.Layers[0].Features[0].Geometry);
         Assert.That(rings, Has.Count.EqualTo(2));
         Assert.That(GeometryEncoder.SignedArea(rings[0]), Is.Positive, "exterior");
         Assert.That(GeometryEncoder.SignedArea(rings[1]), Is.Negative, "hole");
@@ -451,52 +451,10 @@ public class TileBuilderTests
         var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddGeoJson(json).Build();
         var tile = Tile.Parser.ParseFrom(bytes);
 
-        var rings = DecodeRings(tile.Layers[0].Features[0].Geometry);
+        var rings = TestGeometry.DecodeRings(tile.Layers[0].Features[0].Geometry);
         Assert.That(rings, Has.Count.EqualTo(2));
         Assert.That(GeometryEncoder.SignedArea(rings[0]), Is.Positive, "exterior");
         Assert.That(GeometryEncoder.SignedArea(rings[1]), Is.Negative, "hole");
-    }
-
-    /// <summary>
-    /// Decodes MVT polygon geometry commands back into absolute-coordinate rings.
-    /// </summary>
-    private static List<TileCoord[]> DecodeRings(IReadOnlyList<uint> geometry)
-    {
-        var rings = new List<TileCoord[]>();
-        var current = new List<TileCoord>();
-        int x = 0,
-            y = 0;
-        int i = 0;
-
-        static int Unzig(uint v) => (int)(v >> 1) ^ -(int)(v & 1);
-
-        while (i < geometry.Count)
-        {
-            uint cmd = geometry[i++];
-            uint id = cmd & 0x7;
-            uint count = cmd >> 3;
-
-            switch (id)
-            {
-                case 1: // MoveTo
-                case 2: // LineTo
-                    for (uint n = 0; n < count; n++)
-                    {
-                        x += Unzig(geometry[i++]);
-                        y += Unzig(geometry[i++]);
-                        current.Add(new TileCoord(x, y));
-                    }
-                    break;
-                case 7: // ClosePath
-                    rings.Add(current.ToArray());
-                    current.Clear();
-                    break;
-                default:
-                    throw new InvalidOperationException($"Unknown command id {id}");
-            }
-        }
-
-        return rings;
     }
 
     [Test]
@@ -569,7 +527,7 @@ public class TileBuilderTests
 
         var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddPolygon(outer, holes).Build();
 
-        var rings = DecodeRings(Tile.Parser.ParseFrom(bytes).Layers[0].Features[0].Geometry);
+        var rings = TestGeometry.DecodeRings(Tile.Parser.ParseFrom(bytes).Layers[0].Features[0].Geometry);
         Assert.That(rings, Has.Count.EqualTo(2));
     }
 
