@@ -2,8 +2,6 @@ using System.Text.Json;
 
 namespace Bson.MvtNet;
 
-// Lenient by default: anything malformed is skipped. In strict mode the same
-// conditions throw FormatException so callers can see why nothing rendered.
 internal static class GeoJsonReader
 {
     public static void Read(LayerBuilder layer, JsonElement root, bool strict)
@@ -42,26 +40,15 @@ internal static class GeoJsonReader
             return;
         }
 
-        // Reused across features; each feature's tags are consumed before the
-        // next one is read.
-        var propertyBuffer = new Dictionary<string, object>();
+        var reusableProperties = new Dictionary<string, object>();
 
         foreach (var feature in feats.EnumerateArray())
         {
-            if (strict)
-            {
-                ReadFeature(layer, feature, strict, propertyBuffer);
-                continue;
-            }
-
             try
             {
-                ReadFeature(layer, feature, strict, propertyBuffer);
+                ReadFeature(layer, feature, strict, reusableProperties);
             }
-            catch
-            {
-                // skip a malformed feature, keep going
-            }
+            catch when (!strict) { }
         }
     }
 
@@ -69,7 +56,7 @@ internal static class GeoJsonReader
         LayerBuilder layer,
         JsonElement el,
         bool strict,
-        Dictionary<string, object>? propertyBuffer = null
+        Dictionary<string, object>? reusableProperties = null
     )
     {
         if (el.ValueKind != JsonValueKind.Object)
@@ -84,8 +71,8 @@ internal static class GeoJsonReader
             return;
         }
 
-        // An unlocated feature; valid GeoJSON, nothing to draw.
-        if (geom.ValueKind == JsonValueKind.Null)
+        bool unlocated = geom.ValueKind == JsonValueKind.Null;
+        if (unlocated)
         {
             return;
         }
@@ -96,7 +83,7 @@ internal static class GeoJsonReader
             && props.ValueKind == JsonValueKind.Object
         )
         {
-            attrs = ExtractScalarProperties(props, propertyBuffer);
+            attrs = ExtractScalarProperties(props, reusableProperties);
         }
 
         ReadGeometry(layer, geom, attrs, strict);
@@ -441,21 +428,17 @@ internal static class GeoJsonReader
 
     private static Dictionary<string, object>? ExtractScalarProperties(
         JsonElement props,
-        Dictionary<string, object>? propertyBuffer = null
+        Dictionary<string, object>? reusableProperties = null
     )
     {
         Dictionary<string, object>? attrs = null;
-        propertyBuffer?.Clear();
+        reusableProperties?.Clear();
         foreach (var prop in props.EnumerateObject())
         {
             object? value = prop.Value.ValueKind switch
             {
                 JsonValueKind.String => prop.Value.GetString(),
-                // The cast keeps integers as integers; without it the
-                // conditional unifies to double.
-                JsonValueKind.Number => prop.Value.TryGetInt64(out var l)
-                    ? (object)l
-                    : prop.Value.GetDouble(),
+                JsonValueKind.Number => ReadNumber(prop.Value),
                 JsonValueKind.True => true,
                 JsonValueKind.False => false,
                 _ => null,
@@ -466,11 +449,21 @@ internal static class GeoJsonReader
                 continue;
             }
 
-            attrs ??= propertyBuffer ?? new Dictionary<string, object>();
+            attrs ??= reusableProperties ?? new Dictionary<string, object>();
             attrs[prop.Name] = value;
         }
 
         return attrs;
+    }
+
+    private static object ReadNumber(JsonElement number)
+    {
+        if (number.TryGetInt64(out long integer))
+        {
+            return integer;
+        }
+
+        return number.GetDouble();
     }
 
     private static void Fail(bool strict, string message)

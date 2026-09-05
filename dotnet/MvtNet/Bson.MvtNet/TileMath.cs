@@ -4,7 +4,6 @@ internal static class TileMath
 {
     public const uint DefaultExtent = 4096;
 
-    // Kept outside the tile so fills and strokes meet across tile seams.
     internal const double DefaultClipBufferFraction = 0.05;
 
     public static TileBounds GetTileBounds(int z, int x, int y)
@@ -16,38 +15,6 @@ internal static class TileMath
         double south = LatFromY(y + 1, n);
 
         return new TileBounds(north, south, east, west);
-    }
-
-    public static TileCoord? ProjectPoint(
-        double lat,
-        double lng,
-        int z,
-        int x,
-        int y,
-        uint extent = DefaultExtent
-    )
-    {
-        var bounds = GetTileBounds(z, x, y);
-
-        if (lat < bounds.South || lat > bounds.North || lng < bounds.West || lng > bounds.East)
-        {
-            return null;
-        }
-
-        return ProjectWithBounds(lat, lng, bounds, extent);
-    }
-
-    internal static TileCoord ProjectPointUnclamped(
-        double lat,
-        double lng,
-        int z,
-        int x,
-        int y,
-        uint extent = DefaultExtent
-    )
-    {
-        var bounds = GetTileBounds(z, x, y);
-        return ProjectWithBounds(lat, lng, bounds, extent);
     }
 
     internal static TileCoord ProjectWithContext(
@@ -66,9 +33,6 @@ internal static class TileMath
         return new TileCoord(px, py);
     }
 
-    // Projects a point and reports whether it lands inside the tile extent
-    // widened by `buffer` on every side. Out-of-range latitudes (NaN or
-    // beyond the Mercator limit) fail the range check and are rejected.
     internal static bool TryProjectWithinBuffer(
         double lat,
         double lng,
@@ -83,7 +47,8 @@ internal static class TileMath
         double min = -buffer;
         double max = ctx.Extent + buffer;
 
-        if (!(px >= min && px <= max && py >= min && py <= max))
+        bool inside = px >= min && px <= max && py >= min && py <= max;
+        if (!inside)
         {
             coord = default;
             return false;
@@ -111,35 +76,6 @@ internal static class TileMath
             1.0 / (bounds.East - bounds.West),
             1.0 / (southY - northY)
         );
-    }
-
-    public static bool Contains(double lat, double lng, int z, int x, int y)
-    {
-        var bounds = GetTileBounds(z, x, y);
-        return lat >= bounds.South
-            && lat <= bounds.North
-            && lng >= bounds.West
-            && lng <= bounds.East;
-    }
-
-    private static TileCoord ProjectWithBounds(
-        double lat,
-        double lng,
-        TileBounds bounds,
-        uint extent
-    )
-    {
-        double tx = (lng - bounds.West) / (bounds.East - bounds.West);
-
-        double worldY = LatToMercatorY(lat);
-        double northY = LatToMercatorY(bounds.North);
-        double southY = LatToMercatorY(bounds.South);
-        double ty = (worldY - northY) / (southY - northY);
-
-        int px = (int)Math.Round(tx * extent);
-        int py = (int)Math.Round(ty * extent);
-
-        return new TileCoord(px, py);
     }
 
     private static double LatFromY(int y, double n)

@@ -5,17 +5,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>Bson.MvtNet</PackageId>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Authors>bson</Authors>
-    <Description>Encode Mapbox Vector Tiles (MVT 2.1) from plain C#: WGS84 points, lines, polygons or GeoJSON in, protobuf tiles out. Projection, clipping and tag interning are handled for you. No GIS stack required.</Description>
+    <Description>Encode Mapbox Vector Tiles (MVT 2.1) from plain C#: WGS84 points, lines, polygons or GeoJSON in, protobuf tiles out. Projection, clipping and tag interning are handled for you. No GIS stack, no dependencies.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes>https://github.com/bjornhandersson/com.bson/blob/master/dotnet/MvtNet/README.md#release-notes</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>mvt;mapbox;vector-tiles;gis;maps</PackageTags>
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/bjornhandersson/com.bson</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/bjornhandersson/com.bson</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/bjornhandersson/com.bson/tree/master/dotnet/MvtNet</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/bjornhandersson/com.bson/tree/master/dotnet/MvtNet</PackageProjectUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -27,25 +27,13 @@
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
   <!--
-    netstandard2.0 keeps the library usable from .NET Framework and Unity.
-    Modern consumers resolve the net6.0 build, so they are unaffected.
+    The protobuf wire format is written by hand (ProtoBuffer.cs), so the
+    net6.0 build has no package dependencies. netstandard2.0 keeps the library
+    usable from .NET Framework and Unity and needs these two backports.
   -->
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="System.Text.Json" Version="4.7.2" />
     <PackageReference Include="System.Memory" Version="4.5.4" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Google.Protobuf" Version="3.13.0" />
-    <PackageReference
-      Include="Grpc.Tools"
-      Version="2.83.0"
-      PrivateAssets="all"
-      Condition="'$(SKIP_PROTOC)' != 'true'"
-    />
-  </ItemGroup>
-  <ItemGroup Condition="'$(SKIP_PROTOC)' != 'true'">
-    <Protobuf Include="Proto/vector_tile.proto" CompileOutputs="true" GrpcServices="None" Access="Internal" />
-    <Compile Remove="Generated/**" />
   </ItemGroup>
   <ItemGroup>
     <None Include="../README.md" Pack="true" PackagePath="/" />

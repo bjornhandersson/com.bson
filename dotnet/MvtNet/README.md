@@ -4,7 +4,7 @@
 [![CI](https://github.com/bjornhandersson/com.bson/actions/workflows/ci.yml/badge.svg)](https://github.com/bjornhandersson/com.bson/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/bjornhandersson/com.bson/blob/master/LICENSE)
 
-Encode [Mapbox Vector Tiles](https://github.com/mapbox/vector-tile-spec) from plain C#. No GIS stack, no PostGIS, no Mapnik.
+Encode [Mapbox Vector Tiles](https://github.com/mapbox/vector-tile-spec) from plain C#. No GIS stack, no PostGIS, no Mapnik, no dependencies.
 
 ```
 dotnet add package Bson.MvtNet
@@ -20,7 +20,7 @@ return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
 
 <p align="center"><em>10,000 cities encoded on the fly and rendered with MapLibre. Run it yourself with <code>dotnet run --project MvtNet.Demo</code>.</em></p>
 
-Works on .NET 6+, .NET Framework 4.6.1+, Mono and Unity (netstandard2.0).
+Works on .NET 6+, .NET Framework 4.6.1+, Mono and Unity (netstandard2.0). The protobuf wire format is written by hand, so the .NET 6+ build has no package dependencies and the netstandard2.0 build needs only `System.Memory` and `System.Text.Json`.
 
 ## Serve 100k vehicles straight from your database
 
@@ -159,15 +159,15 @@ Measured with BenchmarkDotNet on an Apple M5, .NET 10. Numbers are for building 
 
 | Scenario | Time | Allocated |
 |---|---:|---:|
-| 1,000 points, no attributes | 66 µs | 201 KB |
-| 1,000 points, 3 attributes each | 203 µs | 564 KB |
-| 10,000 points, 3 attributes each | 3.2 ms | 4.6 MB |
-| 1,000-vertex route fully inside the tile | 15 µs | 29 KB |
-| 1,000-vertex route missing the tile | 0.7 µs | 1.5 KB |
-| 500 polygons, each larger than the tile | 1.4 ms | 6.7 MB |
+| 1,000 points, no attributes | 31 µs | 78 KB |
+| 1,000 points, 3 attributes each | 114 µs | 305 KB |
+| 10,000 points, 3 attributes each | 1.7 ms | 2.7 MB |
+| 1,000-vertex route fully inside the tile | 11 µs | 26 KB |
+| 1,000-vertex route missing the tile | 0.7 µs | 1.3 KB |
+| 500 polygons, each larger than the tile | 1.4 ms | 6.6 MB |
 | `TileGeohash.GetPrefixes` | 0.5 µs | 800 B |
 
-`Build(Stream)` writes straight to the response and allocates about a third of `Build()`. Run `dotnet run -c Release --project Bson.MvtNet.Benchmarks` to reproduce.
+Features are encoded as they are added, so `Build()` is a size pass and one copy: 7 µs for a 5,000-feature tile, allocating only the returned array. `Build(Stream)` writes straight to the response and allocates nothing beyond a 120-byte scratch buffer. Run `dotnet run -c Release --project Bson.MvtNet.Benchmarks` to reproduce.
 
 ## Serving tiles well
 
@@ -178,13 +178,23 @@ Measured with BenchmarkDotNet on an Apple M5, .NET 10. Numbers are for building 
 
 ## Limitations
 
-- **Encoder only.** MvtNet does not decode tiles. Use the tests' approach with `Google.Protobuf` if you need to read one back.
+- **Encoder only.** MvtNet does not decode tiles. The tests decode with `Google.Protobuf` and the schema in `Bson.MvtNet.Tests/Proto` if you need to read one back.
 - **Multi-geometries flatten.** GeoJSON `MultiPoint`, `MultiPolygon` and `GeometryCollection` become one MVT feature per part, all sharing the same tags. A line that is clipped into several pieces stays one feature.
 - **2D only.** Altitude in GeoJSON positions is ignored.
 - **No antimeridian handling.** Geometry that crosses ±180° longitude is not split.
 - **Web Mercator only.** Tiles follow the XYZ scheme (y = 0 at the north), as used by MapLibre, Mapbox and OpenLayers.
 
 ## Release notes
+
+### 1.2.0
+
+- Google.Protobuf is no longer a dependency. Tiles are written straight to the protobuf wire format, feature by feature, as they are added. The .NET 6+ package has no dependencies at all.
+- Encoding is 1.5x to 3.5x faster and allocates about half as much. `Build()` went from 500 µs to 7 µs on a 5,000-feature tile, and `Build(Stream)` no longer allocates.
+- Fixed: after `ClosePath` the geometry cursor was reset to the ring's first vertex, but the spec keeps it at the last vertex. Holes and any ring after the first were decoded shifted by that difference. Polygons without holes were unaffected.
+- Layers are serialized in the order they were first created.
+- An attribute of an unsupported type still throws `ArgumentException`, and now also leaves the feature id sequence untouched.
+
+Tiles without polygon holes are byte-for-byte identical to 1.1.0 output. If your project relied on MvtNet to bring in Google.Protobuf transitively, add the package reference yourself.
 
 ### 1.1.0
 

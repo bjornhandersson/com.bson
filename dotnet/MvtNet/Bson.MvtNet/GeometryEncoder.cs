@@ -6,6 +6,9 @@ internal static class GeometryEncoder
     private const uint LineToId = 2;
     private const uint ClosePathId = 7;
 
+    private const int CommandSize = 1;
+    private const int PointSize = 2;
+
     public static uint[] EncodePoint(int x, int y)
     {
         return new[] { CommandInteger(MoveToId, 1), ZigZag(x), ZigZag(y) };
@@ -13,38 +16,13 @@ internal static class GeometryEncoder
 
     public static uint[] EncodeLineString(ReadOnlySpan<TileCoord> coords)
     {
-        if (coords.Length < 2)
-        {
-            throw new ArgumentException(
-                "LineString requires at least 2 coordinates.",
-                nameof(coords)
-            );
-        }
+        RequireLineString(coords, nameof(coords));
 
-        // Layout: MoveTo(1) + x + y + LineTo(n-1) + (n-1) * (dx + dy)
-        int count = 3 + 1 + (coords.Length - 1) * 2;
-        var commands = new uint[count];
-        int pos = 0;
-
-        commands[pos++] = CommandInteger(MoveToId, 1);
-        commands[pos++] = ZigZag(coords[0].X);
-        commands[pos++] = ZigZag(coords[0].Y);
-
-        commands[pos++] = CommandInteger(LineToId, (uint)(coords.Length - 1));
-        int prevX = coords[0].X;
-        int prevY = coords[0].Y;
-        for (int i = 1; i < coords.Length; i++)
-        {
-            commands[pos++] = ZigZag(coords[i].X - prevX);
-            commands[pos++] = ZigZag(coords[i].Y - prevY);
-            prevX = coords[i].X;
-            prevY = coords[i].Y;
-        }
-
-        return commands;
+        var writer = new CommandWriter(PathSize(coords.Length, closed: false));
+        writer.WritePath(coords, closed: false);
+        return writer.Commands;
     }
 
-    // Each part is a MoveTo + LineTo run; the cursor carries over between parts.
     public static uint[] EncodeMultiLineString(IReadOnlyList<TileCoord[]> parts)
     {
         if (parts.Count == 0)
@@ -52,84 +30,31 @@ internal static class GeometryEncoder
             throw new ArgumentException("MultiLineString requires at least one part.", nameof(parts));
         }
 
-        int count = 0;
-        for (int p = 0; p < parts.Count; p++)
+        int size = 0;
+        foreach (var part in parts)
         {
-            if (parts[p].Length < 2)
-            {
-                throw new ArgumentException(
-                    "LineString requires at least 2 coordinates.",
-                    nameof(parts)
-                );
-            }
-            count += 3 + 1 + (parts[p].Length - 1) * 2;
+            RequireLineString(part, nameof(parts));
+            size += PathSize(part.Length, closed: false);
         }
 
-        var commands = new uint[count];
-        int pos = 0;
-        int prevX = 0;
-        int prevY = 0;
-
-        for (int p = 0; p < parts.Count; p++)
+        var writer = new CommandWriter(size);
+        foreach (var part in parts)
         {
-            var part = parts[p];
-
-            commands[pos++] = CommandInteger(MoveToId, 1);
-            commands[pos++] = ZigZag(part[0].X - prevX);
-            commands[pos++] = ZigZag(part[0].Y - prevY);
-            prevX = part[0].X;
-            prevY = part[0].Y;
-
-            commands[pos++] = CommandInteger(LineToId, (uint)(part.Length - 1));
-            for (int i = 1; i < part.Length; i++)
-            {
-                commands[pos++] = ZigZag(part[i].X - prevX);
-                commands[pos++] = ZigZag(part[i].Y - prevY);
-                prevX = part[i].X;
-                prevY = part[i].Y;
-            }
+            writer.WritePath(part, closed: false);
         }
 
-        return commands;
+        return writer.Commands;
     }
 
-    // The ring must not repeat its first point; ClosePath closes it.
     public static uint[] EncodePolygon(ReadOnlySpan<TileCoord> ring)
     {
-        if (ring.Length < 3)
-        {
-            throw new ArgumentException(
-                "Polygon ring requires at least 3 coordinates.",
-                nameof(ring)
-            );
-        }
+        RequireRing(ring, nameof(ring));
 
-        // Layout: MoveTo(1) + x + y + LineTo(n-1) + (n-1) * (dx + dy) + ClosePath(1)
-        int count = 3 + 1 + (ring.Length - 1) * 2 + 1;
-        var commands = new uint[count];
-        int pos = 0;
-
-        commands[pos++] = CommandInteger(MoveToId, 1);
-        commands[pos++] = ZigZag(ring[0].X);
-        commands[pos++] = ZigZag(ring[0].Y);
-
-        commands[pos++] = CommandInteger(LineToId, (uint)(ring.Length - 1));
-        int prevX = ring[0].X;
-        int prevY = ring[0].Y;
-        for (int i = 1; i < ring.Length; i++)
-        {
-            commands[pos++] = ZigZag(ring[i].X - prevX);
-            commands[pos++] = ZigZag(ring[i].Y - prevY);
-            prevX = ring[i].X;
-            prevY = ring[i].Y;
-        }
-
-        commands[pos++] = CommandInteger(ClosePathId, 1);
-
-        return commands;
+        var writer = new CommandWriter(PathSize(ring.Length, closed: true));
+        writer.WritePath(ring, closed: true);
+        return writer.Commands;
     }
 
-    // First ring is the outer boundary, the rest are holes.
     public static uint[] EncodePolygon(IReadOnlyList<TileCoord[]> rings)
     {
         if (rings.Count == 0)
@@ -137,56 +62,22 @@ internal static class GeometryEncoder
             throw new ArgumentException("Polygon requires at least one ring.", nameof(rings));
         }
 
-        int count = 0;
-        for (int r = 0; r < rings.Count; r++)
+        int size = 0;
+        foreach (var ring in rings)
         {
-            var ring = rings[r];
-            if (ring.Length < 3)
-            {
-                throw new ArgumentException(
-                    "Polygon ring requires at least 3 coordinates.",
-                    nameof(rings)
-                );
-            }
-            count += 3 + 1 + (ring.Length - 1) * 2 + 1;
+            RequireRing(ring, nameof(rings));
+            size += PathSize(ring.Length, closed: true);
         }
 
-        var commands = new uint[count];
-        int pos = 0;
-        int prevX = 0;
-        int prevY = 0;
-
-        for (int r = 0; r < rings.Count; r++)
+        var writer = new CommandWriter(size);
+        foreach (var ring in rings)
         {
-            var ring = rings[r];
-
-            commands[pos++] = CommandInteger(MoveToId, 1);
-            commands[pos++] = ZigZag(ring[0].X - prevX);
-            commands[pos++] = ZigZag(ring[0].Y - prevY);
-            int ringStartX = ring[0].X;
-            int ringStartY = ring[0].Y;
-            prevX = ring[0].X;
-            prevY = ring[0].Y;
-
-            commands[pos++] = CommandInteger(LineToId, (uint)(ring.Length - 1));
-            for (int i = 1; i < ring.Length; i++)
-            {
-                commands[pos++] = ZigZag(ring[i].X - prevX);
-                commands[pos++] = ZigZag(ring[i].Y - prevY);
-                prevX = ring[i].X;
-                prevY = ring[i].Y;
-            }
-
-            commands[pos++] = CommandInteger(ClosePathId, 1);
-            prevX = ringStartX;
-            prevY = ringStartY;
+            writer.WritePath(ring, closed: true);
         }
 
-        return commands;
+        return writer.Commands;
     }
 
-    // Shoelace sum, so twice the area. Y grows downward, which makes a positive
-    // result clockwise on screen: the winding MVT requires of exterior rings.
     public static double SignedArea(ReadOnlySpan<TileCoord> ring)
     {
         double sum = 0;
@@ -201,7 +92,10 @@ internal static class GeometryEncoder
     public static void Orient(TileCoord[] ring, bool exterior)
     {
         double area = SignedArea(ring);
-        if (exterior ? area < 0 : area > 0)
+        bool clockwiseOnScreen = area > 0;
+        bool counterClockwiseOnScreen = area < 0;
+
+        if (exterior ? counterClockwiseOnScreen : clockwiseOnScreen)
         {
             Array.Reverse(ring);
         }
@@ -215,5 +109,74 @@ internal static class GeometryEncoder
     public static uint ZigZag(int value)
     {
         return (uint)((value << 1) ^ (value >> 31));
+    }
+
+    private static int PathSize(int points, bool closed)
+    {
+        int moveTo = CommandSize + PointSize;
+        int lineTo = CommandSize + (points - 1) * PointSize;
+        int closePath = closed ? CommandSize : 0;
+        return moveTo + lineTo + closePath;
+    }
+
+    private static void RequireLineString(ReadOnlySpan<TileCoord> coords, string paramName)
+    {
+        if (coords.Length < 2)
+        {
+            throw new ArgumentException("LineString requires at least 2 coordinates.", paramName);
+        }
+    }
+
+    private static void RequireRing(ReadOnlySpan<TileCoord> ring, string paramName)
+    {
+        if (ring.Length < 3)
+        {
+            throw new ArgumentException("Polygon ring requires at least 3 coordinates.", paramName);
+        }
+    }
+
+    private sealed class CommandWriter
+    {
+        private readonly uint[] _commands;
+        private int _position;
+        private int _cursorX;
+        private int _cursorY;
+
+        public CommandWriter(int size)
+        {
+            _commands = new uint[size];
+        }
+
+        public uint[] Commands => _commands;
+
+        public void WritePath(ReadOnlySpan<TileCoord> path, bool closed)
+        {
+            WriteCommand(MoveToId, 1);
+            WritePoint(path[0]);
+
+            WriteCommand(LineToId, (uint)(path.Length - 1));
+            for (int i = 1; i < path.Length; i++)
+            {
+                WritePoint(path[i]);
+            }
+
+            if (closed)
+            {
+                WriteCommand(ClosePathId, 1);
+            }
+        }
+
+        private void WriteCommand(uint id, uint count)
+        {
+            _commands[_position++] = CommandInteger(id, count);
+        }
+
+        private void WritePoint(TileCoord point)
+        {
+            _commands[_position++] = ZigZag(point.X - _cursorX);
+            _commands[_position++] = ZigZag(point.Y - _cursorY);
+            _cursorX = point.X;
+            _cursorY = point.Y;
+        }
     }
 }

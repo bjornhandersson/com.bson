@@ -31,16 +31,11 @@ internal static class LineClipper
             var a = coords[i];
             var b = coords[i + 1];
 
-            var clipped = ClipSegment(a.X, a.Y, b.X, b.Y, minX, minY, maxX, maxY);
+            var clipped = ClipSegmentCohenSutherland(a.X, a.Y, b.X, b.Y, minX, minY, maxX, maxY);
 
             if (clipped is null)
             {
-                // Segment is entirely outside — flush current run
-                if (current.Count >= 2)
-                {
-                    segments.Add(current.ToArray());
-                }
-                current.Clear();
+                EndRun(segments, current);
                 continue;
             }
 
@@ -48,34 +43,32 @@ internal static class LineClipper
             var clippedA = new TileCoord(cx1, cy1);
             var clippedB = new TileCoord(cx2, cy2);
 
-            if (current.Count == 0)
+            bool continuesRun = current.Count > 0 && current[current.Count - 1] == clippedA;
+            if (!continuesRun)
             {
-                current.Add(clippedA);
-            }
-            else if (current[current.Count - 1].X != clippedA.X || current[current.Count - 1].Y != clippedA.Y)
-            {
-                // Discontinuity — the clipped start doesn't match previous end
-                if (current.Count >= 2)
-                {
-                    segments.Add(current.ToArray());
-                }
-                current.Clear();
+                EndRun(segments, current);
                 current.Add(clippedA);
             }
 
             current.Add(clippedB);
         }
 
-        if (current.Count >= 2)
-        {
-            segments.Add(current.ToArray());
-        }
+        EndRun(segments, current);
 
         return segments;
     }
 
-    // Cohen-Sutherland.
-    private static (int X1, int Y1, int X2, int Y2)? ClipSegment(
+    private static void EndRun(List<TileCoord[]> segments, List<TileCoord> run)
+    {
+        if (run.Count >= 2)
+        {
+            segments.Add(run.ToArray());
+        }
+
+        run.Clear();
+    }
+
+    private static (int X1, int Y1, int X2, int Y2)? ClipSegmentCohenSutherland(
         double x1,
         double y1,
         double x2,

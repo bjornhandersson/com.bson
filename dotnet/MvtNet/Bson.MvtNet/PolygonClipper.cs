@@ -1,10 +1,7 @@
 namespace Bson.MvtNet;
 
-// Sutherland-Hodgman. Bounds every emitted coordinate: a ring reaching the poles
-// projects to Mercator Y values tens of thousands of units outside the tile.
 internal static class PolygonClipper
 {
-    // Neither the ring nor the result repeats its first point. Empty when nothing survives.
     public static TileCoord[] Clip(
         TileCoord[] ring,
         uint extent,
@@ -15,25 +12,23 @@ internal static class PolygonClipper
         double min = -buffer;
         double max = extent + buffer;
 
-        // Clipping runs in floating point across all four edges so that
-        // intersections are not re-rounded on every pass.
-        var current = new List<(double X, double Y)>(ring.Length + 8);
+        var unrounded = new List<(double X, double Y)>(ring.Length + 8);
         foreach (var p in ring)
         {
-            current.Add((p.X, p.Y));
+            unrounded.Add((p.X, p.Y));
         }
 
-        current = ClipToEdge(current, Edge.Left, min, max);
-        current = ClipToEdge(current, Edge.Right, min, max);
-        current = ClipToEdge(current, Edge.Bottom, min, max);
-        current = ClipToEdge(current, Edge.Top, min, max);
+        unrounded = ClipToEdgeSutherlandHodgman(unrounded, Edge.Left, min, max);
+        unrounded = ClipToEdgeSutherlandHodgman(unrounded, Edge.Right, min, max);
+        unrounded = ClipToEdgeSutherlandHodgman(unrounded, Edge.Bottom, min, max);
+        unrounded = ClipToEdgeSutherlandHodgman(unrounded, Edge.Top, min, max);
 
-        if (current.Count < 3)
+        if (unrounded.Count < 3)
         {
             return Array.Empty<TileCoord>();
         }
 
-        return Snap(current);
+        return RoundOnce(unrounded);
     }
 
     private enum Edge
@@ -81,7 +76,7 @@ internal static class PolygonClipper
         }
     }
 
-    private static List<(double X, double Y)> ClipToEdge(
+    private static List<(double X, double Y)> ClipToEdgeSutherlandHodgman(
         List<(double X, double Y)> input,
         Edge edge,
         double min,
@@ -120,7 +115,7 @@ internal static class PolygonClipper
         return output;
     }
 
-    private static TileCoord[] Snap(List<(double X, double Y)> points)
+    private static TileCoord[] RoundOnce(List<(double X, double Y)> points)
     {
         var result = new List<TileCoord>(points.Count);
 

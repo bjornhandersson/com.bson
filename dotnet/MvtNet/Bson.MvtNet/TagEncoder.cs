@@ -1,13 +1,19 @@
-using Google.Protobuf.Collections;
-#if !NETSTANDARD2_0
-using System.Runtime.InteropServices;
-#endif
-using VectorTile;
+using System.Text;
 
 namespace Bson.MvtNet;
 
-internal class TagEncoder
+internal sealed class TagEncoder
 {
+    private const byte LayerKeysTag = (3 << 3) | ProtoBuffer.LengthDelimited;
+    private const byte LayerValuesTag = (4 << 3) | ProtoBuffer.LengthDelimited;
+
+    private const byte StringValueTag = (1 << 3) | ProtoBuffer.LengthDelimited;
+    private const byte FloatValueTag = (2 << 3) | ProtoBuffer.Fixed32;
+    private const byte DoubleValueTag = (3 << 3) | ProtoBuffer.Fixed64;
+    private const byte UintValueTag = (5 << 3) | ProtoBuffer.Varint;
+    private const byte SintValueTag = (6 << 3) | ProtoBuffer.Varint;
+    private const byte BoolValueTag = (7 << 3) | ProtoBuffer.Varint;
+
     private readonly Dictionary<string, int> _keys = new();
     private readonly Dictionary<string, int> _stringValues = new();
     private readonly Dictionary<float, int> _floatValues = new();
@@ -15,56 +21,20 @@ internal class TagEncoder
     private readonly Dictionary<long, int> _intValues = new();
     private readonly Dictionary<ulong, int> _uintValues = new();
     private readonly Dictionary<bool, int> _boolValues = new();
-    private readonly List<string> _keyList = new();
-    private readonly List<Tile.Types.Value> _valueList = new();
+    private readonly ProtoBuffer _encodedKeys = new();
+    private readonly ProtoBuffer _encodedValues = new();
+    private int _keyCount;
+    private int _valueCount;
 
-    public uint[] Encode<TValue>(IEnumerable<KeyValuePair<string, TValue>> attributes)
-    {
-        // Fast path for the common Dictionary case where Count is known
-        if (attributes is ICollection<KeyValuePair<string, TValue>> collection)
-        {
-            var tags = new uint[collection.Count * 2];
-            int pos = 0;
-            foreach (var pair in collection)
-            {
-                if (pair.Value is null)
-                {
-                    continue;
-                }
-                tags[pos++] = (uint)GetOrAddKey(pair.Key);
-                tags[pos++] = (uint)GetOrAddValue(pair.Value);
-            }
+    public ProtoBuffer EncodedKeys => _encodedKeys;
 
-            if (pos < tags.Length)
-            {
-                Array.Resize(ref tags, pos);
-            }
-            return tags;
-        }
+    public ProtoBuffer EncodedValues => _encodedValues;
 
-        var tagList = new List<uint>();
-        foreach (var pair in attributes)
-        {
-            if (pair.Value is null)
-            {
-                continue;
-            }
-            tagList.Add((uint)GetOrAddKey(pair.Key));
-            tagList.Add((uint)GetOrAddValue(pair.Value));
-        }
-        return tagList.ToArray();
-    }
-
-    public void EncodeInto<TValue>(
+    public void WriteTags<TValue>(
         IEnumerable<KeyValuePair<string, TValue>> attributes,
-        RepeatedField<uint> tags
+        ProtoBuffer tags
     )
     {
-        if (attributes is ICollection<KeyValuePair<string, TValue>> collection)
-        {
-            tags.Capacity = Math.Max(tags.Capacity, tags.Count + collection.Count * 2);
-        }
-
         foreach (var pair in attributes)
         {
             if (pair.Value is null)
@@ -72,67 +42,41 @@ internal class TagEncoder
                 continue;
             }
 
-            tags.Add((uint)GetOrAddKey(pair.Key));
-            tags.Add((uint)GetOrAddValue(pair.Value));
+            tags.WriteVarint((uint)GetOrAddKey(pair.Key));
+            tags.WriteVarint((uint)GetOrAddValue(pair.Value));
         }
     }
-
-    public IReadOnlyList<string> Keys => _keyList;
-    public IReadOnlyList<Tile.Types.Value> Values => _valueList;
 
     private int GetOrAddKey(string key)
     {
-#if NETSTANDARD2_0
-        if (_keys.TryGetValue(key, out int index))
+        int index = GetOrAddIndex(_keys, key, ref _keyCount, out bool added);
+        if (added)
         {
-            return index;
+            _encodedKeys.WriteByte(LayerKeysTag);
+            _encodedKeys.WriteString(key);
         }
 
-        index = _keyList.Count;
-        _keys[key] = index;
-        _keyList.Add(key);
         return index;
-#else
-        ref int slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_keys, key, out bool existed);
-        if (existed)
-        {
-            return slot;
-        }
-
-        slot = _keyList.Count;
-        _keyList.Add(key);
-        return slot;
-#endif
     }
 
-    private int Intern<TKey>(
+    private static int GetOrAddIndex<TKey>(
         Dictionary<TKey, int> map,
         TKey key,
-        Func<TKey, Tile.Types.Value> make
+        ref int count,
+        out bool added
     )
         where TKey : notnull
     {
-#if NETSTANDARD2_0
         if (map.TryGetValue(key, out int index))
         {
+            added = false;
             return index;
         }
 
-        index = _valueList.Count;
-        map[key] = index;
-        _valueList.Add(make(key));
+        index = count++;
+        map.Add(key, index);
+        added = true;
         return index;
-#else
-        ref int slot = ref CollectionsMarshal.GetValueRefOrAddDefault(map, key, out bool existed);
-        if (existed)
-        {
-            return slot;
-        }
-
-        slot = _valueList.Count;
-        _valueList.Add(make(key));
-        return slot;
-#endif
     }
 
     private int GetOrAddValue(object value)
@@ -164,21 +108,84 @@ internal class TagEncoder
         };
     }
 
-    private int GetOrAddStringValue(string s) =>
-        Intern(_stringValues, s, static v => new Tile.Types.Value { StringValue = v });
+    private int GetOrAddStringValue(string s)
+    {
+        int index = GetOrAddIndex(_stringValues, s, ref _valueCount, out bool added);
+        if (added)
+        {
+            int bytes = Encoding.UTF8.GetByteCount(s);
+            WriteValueHeader(StringValueTag, 1 + ProtoBuffer.VarintSize((ulong)bytes) + bytes);
+            _encodedValues.WriteString(s);
+        }
 
-    private int GetOrAddFloatValue(float f) =>
-        Intern(_floatValues, f, static v => new Tile.Types.Value { FloatValue = v });
+        return index;
+    }
 
-    private int GetOrAddDoubleValue(double d) =>
-        Intern(_doubleValues, d, static v => new Tile.Types.Value { DoubleValue = v });
+    private int GetOrAddFloatValue(float f)
+    {
+        int index = GetOrAddIndex(_floatValues, f, ref _valueCount, out bool added);
+        if (added)
+        {
+            WriteValueHeader(FloatValueTag, 1 + sizeof(float));
+            _encodedValues.WriteFixed32(BitConverter.ToUInt32(BitConverter.GetBytes(f), 0));
+        }
 
-    private int GetOrAddIntValue(long l) =>
-        Intern(_intValues, l, static v => new Tile.Types.Value { SintValue = v });
+        return index;
+    }
 
-    private int GetOrAddUintValue(ulong u) =>
-        Intern(_uintValues, u, static v => new Tile.Types.Value { UintValue = v });
+    private int GetOrAddDoubleValue(double d)
+    {
+        int index = GetOrAddIndex(_doubleValues, d, ref _valueCount, out bool added);
+        if (added)
+        {
+            WriteValueHeader(DoubleValueTag, 1 + sizeof(double));
+            _encodedValues.WriteFixed64((ulong)BitConverter.DoubleToInt64Bits(d));
+        }
 
-    private int GetOrAddBoolValue(bool b) =>
-        Intern(_boolValues, b, static v => new Tile.Types.Value { BoolValue = v });
+        return index;
+    }
+
+    private int GetOrAddIntValue(long l)
+    {
+        int index = GetOrAddIndex(_intValues, l, ref _valueCount, out bool added);
+        if (added)
+        {
+            ulong zigzag = (ulong)((l << 1) ^ (l >> 63));
+            WriteValueHeader(SintValueTag, 1 + ProtoBuffer.VarintSize(zigzag));
+            _encodedValues.WriteVarint(zigzag);
+        }
+
+        return index;
+    }
+
+    private int GetOrAddUintValue(ulong u)
+    {
+        int index = GetOrAddIndex(_uintValues, u, ref _valueCount, out bool added);
+        if (added)
+        {
+            WriteValueHeader(UintValueTag, 1 + ProtoBuffer.VarintSize(u));
+            _encodedValues.WriteVarint(u);
+        }
+
+        return index;
+    }
+
+    private int GetOrAddBoolValue(bool b)
+    {
+        int index = GetOrAddIndex(_boolValues, b, ref _valueCount, out bool added);
+        if (added)
+        {
+            WriteValueHeader(BoolValueTag, 1 + sizeof(byte));
+            _encodedValues.WriteByte(b ? (byte)1 : (byte)0);
+        }
+
+        return index;
+    }
+
+    private void WriteValueHeader(byte valueFieldTag, int bodySize)
+    {
+        _encodedValues.WriteByte(LayerValuesTag);
+        _encodedValues.WriteVarint((ulong)bodySize);
+        _encodedValues.WriteByte(valueFieldTag);
+    }
 }

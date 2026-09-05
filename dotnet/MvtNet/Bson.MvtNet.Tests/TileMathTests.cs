@@ -35,45 +35,38 @@ public class TileMathTests
     }
 
     [Test]
-    public void ProjectPoint_StockholmInCorrectTile()
+    public void TryProjectWithinBuffer_StockholmInCorrectTile()
     {
-        double lat = 59.3281936;
-        double lng = 18.0440866;
-        int z = 10;
+        var ctx = TileMath.CreateProjectionContext(10, 563, 301);
 
-        var coord = TileMath.ProjectPoint(lat, lng, z, 563, 301);
+        bool inside = TileMath.TryProjectWithinBuffer(59.3281936, 18.0440866, ctx, 0, out var coord);
 
-        Assert.That(coord, Is.Not.Null);
-        Assert.That(coord!.Value.X, Is.InRange(0, 4096));
-        Assert.That(coord!.Value.Y, Is.InRange(0, 4096));
+        Assert.That(inside, Is.True);
+        Assert.That(coord.X, Is.InRange(0, 4096));
+        Assert.That(coord.Y, Is.InRange(0, 4096));
     }
 
     [Test]
-    public void ProjectPoint_OutsideTile_ReturnsNull()
+    public void TryProjectWithinBuffer_OutsideTile_ReturnsFalse()
     {
-        var coord = TileMath.ProjectPoint(59.3281936, 18.0440866, 10, 0, 0);
+        var ctx = TileMath.CreateProjectionContext(10, 0, 0);
 
-        Assert.That(coord, Is.Null);
+        Assert.That(TileMath.TryProjectWithinBuffer(59.3281936, 18.0440866, ctx, 0, out _), Is.False);
     }
 
     [Test]
-    public void Contains_StockholmInCorrectTile()
-    {
-        Assert.That(TileMath.Contains(59.3281936, 18.0440866, 10, 563, 301), Is.True);
-        Assert.That(TileMath.Contains(59.3281936, 18.0440866, 10, 0, 0), Is.False);
-    }
-
-    [Test]
-    public void ProjectPointUnclamped_OutsideTile_ReturnsOutOfRangeCoords()
+    public void ProjectWithContext_OutsideTile_ReturnsOutOfRangeCoords()
     {
         // Stockholm projected onto a far-away tile should give coords outside 0..4096
-        var coord = TileMath.ProjectPointUnclamped(59.3281936, 18.0440866, 10, 0, 0);
+        var ctx = TileMath.CreateProjectionContext(10, 0, 0);
+
+        var coord = TileMath.ProjectWithContext(59.3281936, 18.0440866, ctx);
 
         Assert.That(coord.X > 4096 || coord.X < 0 || coord.Y > 4096 || coord.Y < 0, Is.True);
     }
 
     [Test]
-    public void ProjectPoint_AtHighZoom_StillWorks()
+    public void TryProjectWithinBuffer_AtHighZoom_StillWorks()
     {
         // z18 — very zoomed in
         double lat = 59.3281936;
@@ -92,10 +85,10 @@ public class TileMathTests
             * n
         );
 
-        var coord = TileMath.ProjectPoint(lat, lng, 18, x, y);
+        var ctx = TileMath.CreateProjectionContext(18, x, y);
 
-        Assert.That(coord, Is.Not.Null);
-        Assert.That(coord!.Value.X, Is.InRange(0, 4096));
-        Assert.That(coord!.Value.Y, Is.InRange(0, 4096));
+        Assert.That(TileMath.TryProjectWithinBuffer(lat, lng, ctx, 0, out var coord), Is.True);
+        Assert.That(coord.X, Is.InRange(0, 4096));
+        Assert.That(coord.Y, Is.InRange(0, 4096));
     }
 }

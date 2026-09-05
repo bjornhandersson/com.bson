@@ -1,11 +1,5 @@
-#if !NETSTANDARD2_0
-using System.Runtime.InteropServices;
-#endif
+using System.Text;
 using System.Text.Json;
-using Google.Protobuf;
-using VectorTile;
-// The generated MVT message type, aliased so LayerBuilder.Tile can keep its name.
-using ProtoTile = VectorTile.Tile;
 
 namespace Bson.MvtNet;
 
@@ -20,6 +14,7 @@ public sealed class TileBuilder
     private readonly int _y;
     private readonly uint _extent;
     private readonly Dictionary<string, LayerBuilder> _layers = new();
+    private readonly List<LayerBuilder> _layerOrder = new();
 
     /// <summary>
     /// Creates a builder for the tile at the given XYZ address.
@@ -78,6 +73,7 @@ public sealed class TileBuilder
         {
             layer = new LayerBuilder(this, name, _z, _x, _y, _extent);
             _layers[name] = layer;
+            _layerOrder.Add(layer);
         }
 
         return layer;
@@ -87,7 +83,27 @@ public sealed class TileBuilder
     /// Serializes all layers into an MVT protobuf, ready to be served as
     /// <c>application/vnd.mapbox-vector-tile</c>.
     /// </summary>
-    public byte[] Build() => BuildMessage().ToByteArray();
+    public byte[] Build()
+    {
+        int total = 0;
+        foreach (var layer in _layerOrder)
+        {
+            total += layer.FramedSize();
+        }
+
+        if (total == 0)
+        {
+            return Array.Empty<byte>();
+        }
+
+        var buffer = new ProtoBuffer(total);
+        foreach (var layer in _layerOrder)
+        {
+            layer.WriteTo(buffer);
+        }
+
+        return buffer.ToArray();
+    }
 
     /// <summary>
     /// Serializes all layers into an MVT protobuf and writes it to
@@ -100,19 +116,12 @@ public sealed class TileBuilder
         {
             throw new ArgumentNullException(nameof(output));
         }
-        BuildMessage().WriteTo(output);
-    }
 
-    private ProtoTile BuildMessage()
-    {
-        var tile = new ProtoTile();
-
-        foreach (var layer in _layers.Values)
+        var scratch = new ProtoBuffer(64);
+        foreach (var layer in _layerOrder)
         {
-            tile.Layers.Add(layer.BuildLayer());
+            layer.WriteTo(output, scratch);
         }
-
-        return tile;
     }
 }
 
@@ -144,7 +153,8 @@ public sealed class LayerBuilder
     private readonly double _clipBuffer;
     private readonly TileProjectionContext _ctx;
     private readonly TagEncoder _tags = new();
-    private readonly List<ProtoTile.Types.Feature> _features = new();
+    private readonly ProtoBuffer _features = new();
+    private readonly ProtoBuffer _tagScratch = new();
     private ulong _nextId = 1;
     private readonly TileBuilder _tile;
 
@@ -191,16 +201,7 @@ public sealed class LayerBuilder
             return this;
         }
 
-        var feature = NewFeature(ProtoTile.Types.GeomType.Point, id);
-
-        feature.Geometry.AddRange(GeometryEncoder.EncodePoint(coord.X, coord.Y));
-
-        if (attributes is not null)
-        {
-            _tags.EncodeInto(attributes, feature.Tags);
-        }
-
-        _features.Add(feature);
+        AddFeature(GeomType.Point, id, GeometryEncoder.EncodePoint(coord.X, coord.Y), attributes);
         return this;
     }
 
@@ -255,20 +256,12 @@ public sealed class LayerBuilder
             return this;
         }
 
-        var feature = NewFeature(ProtoTile.Types.GeomType.Linestring, id);
-
-        feature.Geometry.AddRange(
+        var geometry =
             clippedSegments.Count == 1
                 ? GeometryEncoder.EncodeLineString(clippedSegments[0])
-                : GeometryEncoder.EncodeMultiLineString(clippedSegments)
-        );
+                : GeometryEncoder.EncodeMultiLineString(clippedSegments);
 
-        if (attributes is not null)
-        {
-            _tags.EncodeInto(attributes, feature.Tags);
-        }
-
-        _features.Add(feature);
+        AddFeature(GeomType.LineString, id, geometry, attributes);
         return this;
     }
 
@@ -322,16 +315,7 @@ public sealed class LayerBuilder
 
         GeometryEncoder.Orient(tileCoords, exterior: true);
 
-        var feature = NewFeature(ProtoTile.Types.GeomType.Polygon, id);
-
-        feature.Geometry.AddRange(GeometryEncoder.EncodePolygon(tileCoords));
-
-        if (attributes is not null)
-        {
-            _tags.EncodeInto(attributes, feature.Tags);
-        }
-
-        _features.Add(feature);
+        AddFeature(GeomType.Polygon, id, GeometryEncoder.EncodePolygon(tileCoords), attributes);
         return this;
     }
 
@@ -401,9 +385,9 @@ public sealed class LayerBuilder
                 continue;
             }
 
-            // A hole clipped away entirely just means it lay outside this tile.
             var holeCoords = PolygonClipper.Clip(ProjectAll(hole), _extent);
-            if (holeCoords.Length < 3)
+            bool holeOutsideTile = holeCoords.Length < 3;
+            if (holeOutsideTile)
             {
                 continue;
             }
@@ -412,15 +396,7 @@ public sealed class LayerBuilder
             rings.Add(holeCoords);
         }
 
-        var feature = NewFeature(ProtoTile.Types.GeomType.Polygon, id);
-        feature.Geometry.AddRange(GeometryEncoder.EncodePolygon(rings));
-
-        if (attributes is not null)
-        {
-            _tags.EncodeInto(attributes, feature.Tags);
-        }
-
-        _features.Add(feature);
+        AddFeature(GeomType.Polygon, id, GeometryEncoder.EncodePolygon(rings), attributes);
         return this;
     }
 
@@ -451,24 +427,7 @@ public sealed class LayerBuilder
             return this;
         }
 
-        if (strict)
-        {
-            using var strictDoc = JsonDocument.Parse(json);
-            GeoJsonReader.Read(this, strictDoc.RootElement, strict: true);
-            return this;
-        }
-
-        try
-        {
-            using var doc = JsonDocument.Parse(json);
-            GeoJsonReader.Read(this, doc.RootElement, strict: false);
-        }
-        catch (JsonException)
-        {
-            // skip malformed input
-        }
-
-        return this;
+        return AddGeoJson(() => JsonDocument.Parse(json), strict);
     }
 
     /// <summary>
@@ -482,22 +441,17 @@ public sealed class LayerBuilder
             throw new ArgumentNullException(nameof(utf8Json));
         }
 
-        if (strict)
-        {
-            using var strictDoc = JsonDocument.Parse(utf8Json);
-            GeoJsonReader.Read(this, strictDoc.RootElement, strict: true);
-            return this;
-        }
+        return AddGeoJson(() => JsonDocument.Parse(utf8Json), strict);
+    }
 
+    private LayerBuilder AddGeoJson(Func<JsonDocument> parse, bool strict)
+    {
         try
         {
-            using var doc = JsonDocument.Parse(utf8Json);
-            GeoJsonReader.Read(this, doc.RootElement, strict: false);
+            using var doc = parse();
+            GeoJsonReader.Read(this, doc.RootElement, strict);
         }
-        catch (JsonException)
-        {
-            // skip malformed input
-        }
+        catch (JsonException) when (!strict) { }
 
         return this;
     }
@@ -515,8 +469,58 @@ public sealed class LayerBuilder
 
     // ---- Internals -------------------------------------------------------
 
-    private ProtoTile.Types.Feature NewFeature(ProtoTile.Types.GeomType type, ulong? id) =>
-        new() { Id = id ?? _nextId++, Type = type };
+    private const byte TileLayersTag = (3 << 3) | ProtoBuffer.LengthDelimited;
+    private const byte LayerNameTag = (1 << 3) | ProtoBuffer.LengthDelimited;
+    private const byte LayerFeaturesTag = (2 << 3) | ProtoBuffer.LengthDelimited;
+    private const byte LayerExtentTag = (5 << 3) | ProtoBuffer.Varint;
+    private const byte LayerVersionTag = (15 << 3) | ProtoBuffer.Varint;
+    private const byte FeatureIdTag = (1 << 3) | ProtoBuffer.Varint;
+    private const byte FeatureTagsTag = (2 << 3) | ProtoBuffer.LengthDelimited;
+    private const byte FeatureTypeTag = (3 << 3) | ProtoBuffer.Varint;
+    private const byte FeatureGeometryTag = (4 << 3) | ProtoBuffer.LengthDelimited;
+    private const byte LayerVersion = 2;
+
+    private void AddFeature<TValue>(
+        GeomType type,
+        ulong? id,
+        uint[] geometry,
+        IEnumerable<KeyValuePair<string, TValue>>? attributes
+    )
+    {
+        _tagScratch.Clear();
+        if (attributes is not null)
+        {
+            _tags.WriteTags(attributes, _tagScratch);
+        }
+
+        ulong featureId = id ?? _nextId++;
+        int tagBytes = _tagScratch.Count;
+        int geometryBytes = ProtoBuffer.PackedSize(geometry);
+
+        int body =
+            1 + ProtoBuffer.VarintSize(featureId)
+            + 1 + sizeof(byte)
+            + 1 + ProtoBuffer.VarintSize((ulong)geometryBytes) + geometryBytes;
+        if (tagBytes > 0)
+        {
+            body += 1 + ProtoBuffer.VarintSize((ulong)tagBytes) + tagBytes;
+        }
+
+        _features.WriteByte(LayerFeaturesTag);
+        _features.WriteVarint((ulong)body);
+        _features.WriteByte(FeatureIdTag);
+        _features.WriteVarint(featureId);
+        if (tagBytes > 0)
+        {
+            _features.WriteByte(FeatureTagsTag);
+            _features.WriteVarint((ulong)tagBytes);
+            _features.Write(_tagScratch);
+        }
+        _features.WriteByte(FeatureTypeTag);
+        _features.WriteByte((byte)type);
+        _features.WriteByte(FeatureGeometryTag);
+        _features.WritePacked(geometry);
+    }
 
     private static ReadOnlySpan<(double Lat, double Lng)> Materialize(
         IEnumerable<(double Lat, double Lng)> coords
@@ -526,13 +530,6 @@ public sealed class LayerBuilder
         {
             return array;
         }
-
-#if !NETSTANDARD2_0
-        if (coords is List<(double Lat, double Lng)> list)
-        {
-            return CollectionsMarshal.AsSpan(list);
-        }
-#endif
 
         return coords.ToArray();
     }
@@ -605,19 +602,68 @@ public sealed class LayerBuilder
     )]
     public void Build(Stream output) => _tile.Build(output);
 
-    internal ProtoTile.Types.Layer BuildLayer()
+    private int BodySize()
     {
-        var layer = new ProtoTile.Types.Layer
-        {
-            Name = _name,
-            Version = 2,
-            Extent = _extent,
-        };
-
-        layer.Keys.AddRange(_tags.Keys);
-        layer.Values.AddRange(_tags.Values);
-        layer.Features.AddRange(_features);
-
-        return layer;
+        int nameBytes = Encoding.UTF8.GetByteCount(_name);
+        return 1 + ProtoBuffer.VarintSize((ulong)nameBytes) + nameBytes
+            + _features.Count
+            + _tags.EncodedKeys.Count
+            + _tags.EncodedValues.Count
+            + 1 + ProtoBuffer.VarintSize(_extent)
+            + 1 + sizeof(byte);
     }
+
+    internal int FramedSize()
+    {
+        int body = BodySize();
+        return 1 + ProtoBuffer.VarintSize((ulong)body) + body;
+    }
+
+    internal void WriteTo(ProtoBuffer output)
+    {
+        WriteHeader(output);
+        output.Write(_features);
+        output.Write(_tags.EncodedKeys);
+        output.Write(_tags.EncodedValues);
+        WriteTrailer(output);
+    }
+
+    internal void WriteTo(Stream output, ProtoBuffer scratch)
+    {
+        scratch.Clear();
+        WriteHeader(scratch);
+        scratch.WriteTo(output);
+
+        _features.WriteTo(output);
+        _tags.EncodedKeys.WriteTo(output);
+        _tags.EncodedValues.WriteTo(output);
+
+        scratch.Clear();
+        WriteTrailer(scratch);
+        scratch.WriteTo(output);
+    }
+
+    private void WriteHeader(ProtoBuffer output)
+    {
+        output.WriteByte(TileLayersTag);
+        output.WriteVarint((ulong)BodySize());
+        output.WriteByte(LayerNameTag);
+        output.WriteString(_name);
+    }
+
+    private void WriteTrailer(ProtoBuffer output)
+    {
+        output.WriteByte(LayerExtentTag);
+        output.WriteVarint(_extent);
+        output.WriteByte(LayerVersionTag);
+        output.WriteByte(LayerVersion);
+    }
+}
+
+internal enum GeomType : byte
+{
+    Unknown = 0,
+    Point = 1,
+    LineString = 2,
+    Polygon = 3,
 }

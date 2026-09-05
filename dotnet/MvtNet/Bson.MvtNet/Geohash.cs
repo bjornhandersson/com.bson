@@ -67,11 +67,7 @@ public static class Geohash
             }
         }
 
-#if NETSTANDARD2_0
-        return new string(result.ToArray());
-#else
-        return new string(result);
-#endif
+        return result.ToString();
     }
 
     private static double Clamp(double value, double min, double max) =>
@@ -147,14 +143,13 @@ public static class Geohash
         var seen = new HashSet<string>();
         var result = new List<string>();
 
-        // Snap to cell grid: start at the center of the SW cell, step by full cell size
-        double startLat = sample.South + cellHeight / 2;
-        double startLng = sample.West + cellWidth / 2;
+        double firstCellCenterLat = sample.South + cellHeight / 2;
+        double firstCellCenterLng = sample.West + cellWidth / 2;
 
-        double lat = startLat;
+        double lat = firstCellCenterLat;
         while (lat <= north + cellHeight)
         {
-            double lng = startLng;
+            double lng = firstCellCenterLng;
             while (lng <= east + cellWidth)
             {
                 string hash = Encode(
