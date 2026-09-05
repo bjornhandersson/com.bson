@@ -116,13 +116,14 @@ public class GeometryEncoderTests
     }
 
     [Test]
-    public void Orient_ZeroAreaRing_IsUnchanged()
+    public void Orient_ZeroAreaRing_ReturnsFalseAndLeavesRingUnchanged()
     {
         TileCoord[] ring = [new(0, 0), new(50, 50), new(100, 100)];
         var original = ring.ToArray();
 
-        GeometryEncoder.Orient(ring, exterior: true);
+        bool oriented = GeometryEncoder.Orient(ring, exterior: true);
 
+        Assert.That(oriented, Is.False);
         Assert.That(ring, Is.EqualTo(original));
     }
 }

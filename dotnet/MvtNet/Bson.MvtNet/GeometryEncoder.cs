@@ -89,16 +89,27 @@ internal static class GeometryEncoder
         return sum;
     }
 
-    public static void Orient(TileCoord[] ring, bool exterior)
+    /// <summary>
+    /// Reverses <paramref name="ring"/> in place if needed so it has the winding
+    /// the spec requires: positive area for exterior rings, negative for holes.
+    /// Returns false when the ring has zero area. Such a ring has no winding and
+    /// cannot satisfy the spec, so the caller should drop it.
+    /// </summary>
+    public static bool Orient(TileCoord[] ring, bool exterior)
     {
         double area = SignedArea(ring);
-        bool clockwiseOnScreen = area > 0;
-        bool counterClockwiseOnScreen = area < 0;
+        if (area == 0)
+        {
+            return false;
+        }
 
-        if (exterior ? counterClockwiseOnScreen : clockwiseOnScreen)
+        bool clockwiseOnScreen = area > 0;
+        if (exterior ? !clockwiseOnScreen : clockwiseOnScreen)
         {
             Array.Reverse(ring);
         }
+
+        return true;
     }
 
     public static uint CommandInteger(uint commandId, uint count)

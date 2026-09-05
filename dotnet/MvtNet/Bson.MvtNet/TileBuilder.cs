@@ -280,6 +280,8 @@ public sealed class LayerBuilder
     /// winding order; it is normalized to the orientation the MVT spec requires.
     /// The ring is clipped to the tile plus a small buffer, so polygons crossing
     /// tile boundaries render correctly and never emit runaway coordinates.
+    /// Silently skipped if the ring doesn't overlap the tile, or if it is too
+    /// small to cover any area at this zoom level.
     /// </summary>
     /// <param name="ring">At least three (lat, lng) positions.</param>
     /// <param name="attributes">Key/value pairs that become the feature's tags. See the class remarks for supported value types.</param>
@@ -313,7 +315,10 @@ public sealed class LayerBuilder
             return this;
         }
 
-        GeometryEncoder.Orient(tileCoords, exterior: true);
+        if (!GeometryEncoder.Orient(tileCoords, exterior: true))
+        {
+            return this;
+        }
 
         AddFeature(GeomType.Polygon, id, GeometryEncoder.EncodePolygon(tileCoords), attributes);
         return this;
@@ -333,8 +338,9 @@ public sealed class LayerBuilder
     /// Adds a Polygon feature with one or more holes. The outer ring and each
     /// hole should NOT repeat the first point and may be given in either winding
     /// order; rings are normalized to the orientation the MVT spec requires.
-    /// Rings with fewer than 3 points are silently dropped; if the outer ring is
-    /// invalid the whole feature is skipped.
+    /// Rings with fewer than 3 points, or that cover no area at this zoom level,
+    /// are silently dropped; if the outer ring is invalid the whole feature is
+    /// skipped.
     /// </summary>
     /// <param name="outer">The exterior ring, at least three (lat, lng) positions.</param>
     /// <param name="holes">Interior rings.</param>
@@ -374,7 +380,10 @@ public sealed class LayerBuilder
             return this;
         }
 
-        GeometryEncoder.Orient(outerCoords, exterior: true);
+        if (!GeometryEncoder.Orient(outerCoords, exterior: true))
+        {
+            return this;
+        }
 
         var rings = new List<TileCoord[]> { outerCoords };
         foreach (var holeEnumerable in holes)
@@ -392,7 +401,11 @@ public sealed class LayerBuilder
                 continue;
             }
 
-            GeometryEncoder.Orient(holeCoords, exterior: false);
+            if (!GeometryEncoder.Orient(holeCoords, exterior: false))
+            {
+                continue;
+            }
+
             rings.Add(holeCoords);
         }
 

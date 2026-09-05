@@ -1,11 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net6.0;net8.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>Bson.MvtNet</PackageId>
-    <Version>1.2.1</Version>
+    <Version>1.2.2</Version>
     <Authors>bson</Authors>
     <Description>Encode Mapbox Vector Tiles (MVT 2.1) from plain C#: WGS84 points, lines, polygons or GeoJSON in, protobuf tiles out. Projection, clipping and tag interning are handled for you. No GIS stack, no dependencies.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -23,12 +23,18 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net6.0'">
+    <IsTrimmable>true</IsTrimmable>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(CI)' == 'true' Or '$(GITHUB_ACTIONS)' == 'true'">
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
   <!--
     The protobuf wire format is written by hand (ProtoBuffer.cs), so the
-    net6.0 build has no package dependencies. netstandard2.0 keeps the library
+    net6.0 and net8.0 builds have no package dependencies. netstandard2.0 keeps the library
     usable from .NET Framework and Unity and needs these two backports.
   -->
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">

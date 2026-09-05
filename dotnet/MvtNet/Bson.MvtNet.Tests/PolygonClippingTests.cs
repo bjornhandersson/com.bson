@@ -153,4 +153,54 @@ public class PolygonClippingTests
         // the out-of-tile ring contributes no feature.
         Assert.That(tile.Layers[0].Features, Is.Empty);
     }
+
+    [Test]
+    public void AddPolygon_CollinearRing_AddsNoFeature()
+    {
+        // Three points on one parallel: a ring with zero area has no winding
+        // order, so it can never satisfy the spec's orientation rule.
+        var ring = new[] { (59.3300, 18.0600), (59.3300, 18.0620), (59.3300, 18.0640) };
+
+        var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(ring).Tile.Build();
+        var tile = Tile.Parser.ParseFrom(bytes);
+
+        Assert.That(tile.Layers[0].Features, Is.Empty);
+    }
+
+    [Test]
+    public void AddPolygon_ZeroAreaHole_IsDroppedAndOuterKept()
+    {
+        var outer = new[]
+        {
+            (59.3300, 18.0400),
+            (59.3300, 18.0500),
+            (59.3200, 18.0500),
+            (59.3200, 18.0400),
+        };
+        var holes = new[]
+        {
+            new[] { (59.3280, 18.0430), (59.3280, 18.0450), (59.3280, 18.0470) },
+        };
+
+        var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(outer, holes).Tile.Build();
+        var rings = RingsOf(bytes);
+
+        Assert.That(rings, Has.Count.EqualTo(1));
+        Assert.That(GeometryEncoder.SignedArea(rings[0]), Is.GreaterThan(0));
+    }
+
+    [Test]
+    public void AddPolygon_ZeroAreaOuterWithValidHole_AddsNoFeature()
+    {
+        var outer = new[] { (59.3300, 18.0400), (59.3300, 18.0450), (59.3300, 18.0500) };
+        var holes = new[]
+        {
+            new[] { (59.3280, 18.0430), (59.3280, 18.0470), (59.3220, 18.0470), (59.3220, 18.0430) },
+        };
+
+        var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(outer, holes).Tile.Build();
+        var tile = Tile.Parser.ParseFrom(bytes);
+
+        Assert.That(tile.Layers[0].Features, Is.Empty);
+    }
 }

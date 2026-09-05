@@ -22,6 +22,8 @@ return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
 
 Works on .NET 6+, .NET Framework 4.6.1+, Mono and Unity (netstandard2.0). The protobuf wire format is written by hand, so the .NET 6+ build has no package dependencies and the netstandard2.0 build needs only `System.Memory` and `System.Text.Json`.
 
+Native AOT and trimming ready. There is no reflection anywhere, the .NET 8 build is marked `IsAotCompatible`, and a tile server published with `PublishAot` starts in milliseconds, which suits AWS Lambda and other cold-start-sensitive hosts.
+
 ## Serve 100k vehicles straight from your database
 
 A tile request becomes a handful of `WHERE geohash LIKE 'u6s%'` prefix queries.
@@ -185,6 +187,11 @@ Features are encoded as they are added, so `Build()` is a size pass and one copy
 - **Web Mercator only.** Tiles follow the XYZ scheme (y = 0 at the north), as used by MapLibre, Mapbox and OpenLayers.
 
 ## Release notes
+
+### 1.2.2
+
+- Native AOT ready: a .NET 8 target marked `IsAotCompatible` is included, and the .NET 6 target is marked trimmable. The AOT and trim analyzers run on every build.
+- Fixed: a polygon ring that collapses to a line or a point at the current zoom level was still emitted. A zero-area ring has no winding order and cannot meet the spec's orientation rule, so such rings are now dropped: the feature is skipped when it is the exterior ring, and a hole is dropped on its own.
 
 ### 1.2.1
 
