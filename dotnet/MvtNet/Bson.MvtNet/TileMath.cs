@@ -66,6 +66,33 @@ internal static class TileMath
         return new TileCoord(px, py);
     }
 
+    // Projects a point and reports whether it lands inside the tile extent
+    // widened by `buffer` on every side. Out-of-range latitudes (NaN or
+    // beyond the Mercator limit) fail the range check and are rejected.
+    internal static bool TryProjectWithinBuffer(
+        double lat,
+        double lng,
+        in TileProjectionContext ctx,
+        double buffer,
+        out TileCoord coord
+    )
+    {
+        double px = (lng - ctx.West) * ctx.InvLngSpan * ctx.Extent;
+        double py = (LatToMercatorY(lat) - ctx.NorthY) * ctx.InvMercatorSpan * ctx.Extent;
+
+        double min = -buffer;
+        double max = ctx.Extent + buffer;
+
+        if (!(px >= min && px <= max && py >= min && py <= max))
+        {
+            coord = default;
+            return false;
+        }
+
+        coord = new TileCoord((int)Math.Round(px), (int)Math.Round(py));
+        return true;
+    }
+
     internal static TileProjectionContext CreateProjectionContext(
         int z,
         int x,

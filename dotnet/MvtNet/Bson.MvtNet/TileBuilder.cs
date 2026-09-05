@@ -11,6 +11,7 @@ namespace Bson.MvtNet;
 
 /// <summary>
 /// Builds an MVT tile from WGS84 features for a given z/x/y tile address.
+/// Not thread-safe: build one tile per request, on one thread.
 /// </summary>
 public sealed class TileBuilder
 {
@@ -116,17 +117,31 @@ public sealed class TileBuilder
 }
 
 /// <summary>
-/// Adds features to one named layer of a tile. Attribute values may be string,
-/// bool, any integer primitive, float, double, decimal (stored as double) or an
-/// enum (stored by name); pairs with a null value are dropped, and any other
-/// type throws <see cref="ArgumentException"/>.
+/// Adds features to one named layer of a tile.
+/// <para>
+/// <b>Attributes</b> are any sequence of key/value pairs, typically a
+/// <c>Dictionary&lt;string, object&gt;</c>. Values may be string, bool, any
+/// integer primitive, float, double, decimal (stored as double), char, Guid,
+/// DateTime and DateTimeOffset (stored as ISO 8601 strings) or an enum (stored
+/// by name). Pairs with a null value are dropped. Any other value type throws
+/// <see cref="ArgumentException"/>.
+/// </para>
+/// <para>
+/// <b>Feature ids</b> are assigned 1, 2, 3, … per layer unless you pass
+/// <c>id</c>. Supply your own ids when the client needs to address features,
+/// for example MapLibre's <c>setFeatureState</c>. Ids should be unique within a
+/// layer, so pass them for every feature or for none.
+/// </para>
+/// <para>
 /// Coordinate sequences are accepted as any <see cref="IEnumerable{T}"/>;
 /// arrays are used directly without copying.
+/// </para>
 /// </summary>
 public sealed class LayerBuilder
 {
     private readonly string _name;
     private readonly uint _extent;
+    private readonly double _clipBuffer;
     private readonly TileProjectionContext _ctx;
     private readonly TagEncoder _tags = new();
     private readonly List<ProtoTile.Types.Feature> _features = new();
@@ -138,28 +153,45 @@ public sealed class LayerBuilder
         _tile = tile;
         _name = name;
         _extent = extent;
+        _clipBuffer = extent * TileMath.DefaultClipBufferFraction;
         _ctx = TileMath.CreateProjectionContext(z, x, y, extent);
     }
 
+    // ---- Points ----------------------------------------------------------
+
+    /// <summary>
+    /// Adds a point feature at the given WGS84 coordinate, without attributes.
+    /// Points inside the tile or its small buffer margin are kept, so symbols
+    /// at tile seams are not cut off; anything further out is silently skipped.
+    /// </summary>
+    /// <param name="lat">Latitude in degrees.</param>
+    /// <param name="lng">Longitude in degrees.</param>
+    /// <param name="id">Feature id. Auto-assigned when null.</param>
+    public LayerBuilder AddPoint(double lat, double lng, ulong? id = null) =>
+        AddPoint<object>(lat, lng, null, id);
+
     /// <summary>
     /// Adds a point feature at the given WGS84 coordinate.
-    /// Silently skipped if the point is outside this tile.
+    /// Points inside the tile or its small buffer margin are kept, so symbols
+    /// at tile seams are not cut off; anything further out is silently skipped.
     /// </summary>
-    public LayerBuilder AddPoint(
+    /// <param name="lat">Latitude in degrees.</param>
+    /// <param name="lng">Longitude in degrees.</param>
+    /// <param name="attributes">Key/value pairs that become the feature's tags. See the class remarks for supported value types.</param>
+    /// <param name="id">Feature id. Auto-assigned when null.</param>
+    public LayerBuilder AddPoint<TValue>(
         double lat,
         double lng,
-        IEnumerable<KeyValuePair<string, object>>? attributes = null
+        IEnumerable<KeyValuePair<string, TValue>>? attributes,
+        ulong? id = null
     )
     {
-        var bounds = _ctx.Bounds;
-        if (lat < bounds.South || lat > bounds.North || lng < bounds.West || lng > bounds.East)
+        if (!TileMath.TryProjectWithinBuffer(lat, lng, _ctx, _clipBuffer, out var coord))
         {
             return this;
         }
 
-        var coord = TileMath.ProjectWithContext(lat, lng, _ctx);
-
-        var feature = new ProtoTile.Types.Feature { Id = _nextId++, Type = ProtoTile.Types.GeomType.Point };
+        var feature = NewFeature(ProtoTile.Types.GeomType.Point, id);
 
         feature.Geometry.AddRange(GeometryEncoder.EncodePoint(coord.X, coord.Y));
 
@@ -172,16 +204,30 @@ public sealed class LayerBuilder
         return this;
     }
 
+    // ---- Lines -----------------------------------------------------------
+
+    /// <summary>
+    /// Adds a LineString feature from WGS84 coordinates, without attributes.
+    /// See <see cref="AddLineString{TValue}"/>.
+    /// </summary>
+    public LayerBuilder AddLineString(IEnumerable<(double Lat, double Lng)> coords, ulong? id = null) =>
+        AddLineString<object>(coords, null, id);
+
     /// <summary>
     /// Adds a LineString feature from WGS84 coordinates.
     /// The line is clipped to the tile extent (with a buffer margin) so only
-    /// the visible portion is encoded. If the line crosses the tile multiple
-    /// times, multiple features are emitted. Silently skipped if the geometry
+    /// the visible portion is encoded. If the line leaves and re-enters the
+    /// tile, the visible parts are encoded as one MultiLineString feature that
+    /// keeps a single id and one set of tags. Silently skipped if the geometry
     /// doesn't overlap the tile at all.
     /// </summary>
-    public LayerBuilder AddLineString(
+    /// <param name="coords">At least two (lat, lng) positions.</param>
+    /// <param name="attributes">Key/value pairs that become the feature's tags. See the class remarks for supported value types.</param>
+    /// <param name="id">Feature id. Auto-assigned when null.</param>
+    public LayerBuilder AddLineString<TValue>(
         IEnumerable<(double Lat, double Lng)> coords,
-        IEnumerable<KeyValuePair<string, object>>? attributes = null
+        IEnumerable<KeyValuePair<string, TValue>>? attributes,
+        ulong? id = null
     )
     {
         if (coords is null)
@@ -201,38 +247,54 @@ public sealed class LayerBuilder
         }
 
         var tileCoords = ProjectAll(points);
-
-        uint[]? encodedTags = null;
-        if (attributes is not null)
-        {
-            encodedTags = _tags.Encode(attributes);
-        }
-
         var clippedSegments = LineClipper.Clip(tileCoords, _extent);
 
-        foreach (var segment in clippedSegments)
+        clippedSegments.RemoveAll(static s => s.Length < 2);
+        if (clippedSegments.Count == 0)
         {
-            if (segment.Length < 2)
-            {
-                continue;
-            }
-
-            AddLineFeature(segment, encodedTags);
+            return this;
         }
 
+        var feature = NewFeature(ProtoTile.Types.GeomType.Linestring, id);
+
+        feature.Geometry.AddRange(
+            clippedSegments.Count == 1
+                ? GeometryEncoder.EncodeLineString(clippedSegments[0])
+                : GeometryEncoder.EncodeMultiLineString(clippedSegments)
+        );
+
+        if (attributes is not null)
+        {
+            _tags.EncodeInto(attributes, feature.Tags);
+        }
+
+        _features.Add(feature);
         return this;
     }
 
+    // ---- Polygons --------------------------------------------------------
+
     /// <summary>
-    /// Adds a Polygon feature from WGS84 coordinates (outer ring only for now).
+    /// Adds a Polygon feature from a single WGS84 ring, without attributes.
+    /// See <see cref="AddPolygon{TValue}(IEnumerable{ValueTuple{double, double}}, IEnumerable{KeyValuePair{string, TValue}}, ulong?)"/>.
+    /// </summary>
+    public LayerBuilder AddPolygon(IEnumerable<(double Lat, double Lng)> ring, ulong? id = null) =>
+        AddPolygon<object>(ring, null, id);
+
+    /// <summary>
+    /// Adds a Polygon feature from a single WGS84 ring (no holes).
     /// The ring should NOT repeat the first point and may be given in either
     /// winding order; it is normalized to the orientation the MVT spec requires.
     /// The ring is clipped to the tile plus a small buffer, so polygons crossing
     /// tile boundaries render correctly and never emit runaway coordinates.
     /// </summary>
-    public LayerBuilder AddPolygon(
+    /// <param name="ring">At least three (lat, lng) positions.</param>
+    /// <param name="attributes">Key/value pairs that become the feature's tags. See the class remarks for supported value types.</param>
+    /// <param name="id">Feature id. Auto-assigned when null.</param>
+    public LayerBuilder AddPolygon<TValue>(
         IEnumerable<(double Lat, double Lng)> ring,
-        IEnumerable<KeyValuePair<string, object>>? attributes = null
+        IEnumerable<KeyValuePair<string, TValue>>? attributes,
+        ulong? id = null
     )
     {
         if (ring is null)
@@ -260,7 +322,7 @@ public sealed class LayerBuilder
 
         GeometryEncoder.Orient(tileCoords, exterior: true);
 
-        var feature = new ProtoTile.Types.Feature { Id = _nextId++, Type = ProtoTile.Types.GeomType.Polygon };
+        var feature = NewFeature(ProtoTile.Types.GeomType.Polygon, id);
 
         feature.Geometry.AddRange(GeometryEncoder.EncodePolygon(tileCoords));
 
@@ -274,16 +336,31 @@ public sealed class LayerBuilder
     }
 
     /// <summary>
+    /// Adds a Polygon feature with one or more holes, without attributes.
+    /// See <see cref="AddPolygon{TValue}(IEnumerable{ValueTuple{double, double}}, IEnumerable{IEnumerable{ValueTuple{double, double}}}, IEnumerable{KeyValuePair{string, TValue}}, ulong?)"/>.
+    /// </summary>
+    public LayerBuilder AddPolygon(
+        IEnumerable<(double Lat, double Lng)> outer,
+        IEnumerable<IEnumerable<(double Lat, double Lng)>> holes,
+        ulong? id = null
+    ) => AddPolygon<object>(outer, holes, null, id);
+
+    /// <summary>
     /// Adds a Polygon feature with one or more holes. The outer ring and each
     /// hole should NOT repeat the first point and may be given in either winding
     /// order; rings are normalized to the orientation the MVT spec requires.
     /// Rings with fewer than 3 points are silently dropped; if the outer ring is
     /// invalid the whole feature is skipped.
     /// </summary>
-    public LayerBuilder AddPolygon(
+    /// <param name="outer">The exterior ring, at least three (lat, lng) positions.</param>
+    /// <param name="holes">Interior rings.</param>
+    /// <param name="attributes">Key/value pairs that become the feature's tags. See the class remarks for supported value types.</param>
+    /// <param name="id">Feature id. Auto-assigned when null.</param>
+    public LayerBuilder AddPolygon<TValue>(
         IEnumerable<(double Lat, double Lng)> outer,
         IEnumerable<IEnumerable<(double Lat, double Lng)>> holes,
-        IEnumerable<KeyValuePair<string, object>>? attributes = null
+        IEnumerable<KeyValuePair<string, TValue>>? attributes,
+        ulong? id = null
     )
     {
         if (outer is null)
@@ -335,7 +412,7 @@ public sealed class LayerBuilder
             rings.Add(holeCoords);
         }
 
-        var feature = new ProtoTile.Types.Feature { Id = _nextId++, Type = ProtoTile.Types.GeomType.Polygon };
+        var feature = NewFeature(ProtoTile.Types.GeomType.Polygon, id);
         feature.Geometry.AddRange(GeometryEncoder.EncodePolygon(rings));
 
         if (attributes is not null)
@@ -347,24 +424,44 @@ public sealed class LayerBuilder
         return this;
     }
 
+    // ---- GeoJSON ---------------------------------------------------------
+
     /// <summary>
     /// Ingests a GeoJSON document (FeatureCollection, Feature, or bare geometry)
-    /// and adds each feature to this layer. Top-level scalar `properties` become
-    /// MVT tags; nested objects, arrays, and source feature ids are dropped.
-    /// Multi-geometries and GeometryCollection are flattened to N MVT features
-    /// sharing the same tags. Malformed input is silently skipped.
+    /// and adds each feature to this layer. Top-level scalar <c>properties</c>
+    /// become MVT tags; nested objects, arrays, and source feature ids are
+    /// dropped. Multi-geometries and GeometryCollection are flattened to N MVT
+    /// features sharing the same tags.
     /// </summary>
-    public LayerBuilder AddGeoJson(string json)
+    /// <param name="json">The GeoJSON text.</param>
+    /// <param name="strict">
+    /// When false (the default) malformed JSON and invalid features are
+    /// silently skipped, which suits untrusted input. When true, malformed JSON
+    /// throws <see cref="JsonException"/> and the first invalid feature throws
+    /// <see cref="FormatException"/> describing the problem.
+    /// </param>
+    public LayerBuilder AddGeoJson(string json, bool strict = false)
     {
         if (string.IsNullOrWhiteSpace(json))
         {
+            if (strict)
+            {
+                throw new FormatException("GeoJSON input is empty.");
+            }
+            return this;
+        }
+
+        if (strict)
+        {
+            using var strictDoc = JsonDocument.Parse(json);
+            GeoJsonReader.Read(this, strictDoc.RootElement, strict: true);
             return this;
         }
 
         try
         {
             using var doc = JsonDocument.Parse(json);
-            GeoJsonReader.Read(this, doc.RootElement);
+            GeoJsonReader.Read(this, doc.RootElement, strict: false);
         }
         catch (JsonException)
         {
@@ -375,15 +472,27 @@ public sealed class LayerBuilder
     }
 
     /// <summary>
-    /// Ingests a GeoJSON document from a UTF-8 stream. See AddGeoJson(string)
-    /// for semantics.
+    /// Ingests a GeoJSON document from a UTF-8 stream. See
+    /// <see cref="AddGeoJson(string, bool)"/> for semantics.
     /// </summary>
-    public LayerBuilder AddGeoJson(Stream utf8Json)
+    public LayerBuilder AddGeoJson(Stream utf8Json, bool strict = false)
     {
+        if (utf8Json is null)
+        {
+            throw new ArgumentNullException(nameof(utf8Json));
+        }
+
+        if (strict)
+        {
+            using var strictDoc = JsonDocument.Parse(utf8Json);
+            GeoJsonReader.Read(this, strictDoc.RootElement, strict: true);
+            return this;
+        }
+
         try
         {
             using var doc = JsonDocument.Parse(utf8Json);
-            GeoJsonReader.Read(this, doc.RootElement);
+            GeoJsonReader.Read(this, doc.RootElement, strict: false);
         }
         catch (JsonException)
         {
@@ -396,13 +505,18 @@ public sealed class LayerBuilder
     /// <summary>
     /// Ingests a GeoJSON document from an already-parsed JsonElement. Use this
     /// path to avoid re-parsing the same document across many tile builds.
-    /// See AddGeoJson(string) for semantics.
+    /// See <see cref="AddGeoJson(string, bool)"/> for semantics.
     /// </summary>
-    public LayerBuilder AddGeoJson(JsonElement element)
+    public LayerBuilder AddGeoJson(JsonElement element, bool strict = false)
     {
-        GeoJsonReader.Read(this, element);
+        GeoJsonReader.Read(this, element, strict);
         return this;
     }
+
+    // ---- Internals -------------------------------------------------------
+
+    private ProtoTile.Types.Feature NewFeature(ProtoTile.Types.GeomType type, ulong? id) =>
+        new() { Id = id ?? _nextId++, Type = type };
 
     private static ReadOnlySpan<(double Lat, double Lng)> Materialize(
         IEnumerable<(double Lat, double Lng)> coords
@@ -467,24 +581,6 @@ public sealed class LayerBuilder
         }
 
         return result;
-    }
-
-    private void AddLineFeature(TileCoord[] coords, uint[]? encodedTags)
-    {
-        var feature = new ProtoTile.Types.Feature
-        {
-            Id = _nextId++,
-            Type = ProtoTile.Types.GeomType.Linestring,
-        };
-
-        feature.Geometry.AddRange(GeometryEncoder.EncodeLineString(coords));
-
-        if (encodedTags is not null)
-        {
-            feature.Tags.AddRange(encodedTags);
-        }
-
-        _features.Add(feature);
     }
 
     /// <summary>

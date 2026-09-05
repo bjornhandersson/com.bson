@@ -5,9 +5,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>Bson.MvtNet</PackageId>
-    <Version>1.0.7</Version>
+    <Version>1.1.0</Version>
     <Authors>bson</Authors>
-    <Description>Encode WGS84 geographic features into Mapbox Vector Tiles (MVT spec v2.1)</Description>
+    <Description>Encode Mapbox Vector Tiles (MVT 2.1) from plain C#: WGS84 points, lines, polygons or GeoJSON in, protobuf tiles out. Projection, clipping and tag interning are handled for you. No GIS stack required.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReleaseNotes>https://github.com/bjornhandersson/com.bson/blob/master/dotnet/MvtNet/README.md#release-notes</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>mvt;mapbox;vector-tiles;gis;maps</PackageTags>
     <RepositoryType>git</RepositoryType>
@@ -43,6 +46,10 @@
   <ItemGroup Condition="'$(SKIP_PROTOC)' != 'true'">
     <Protobuf Include="Proto/vector_tile.proto" CompileOutputs="true" GrpcServices="None" Access="Internal" />
     <Compile Remove="Generated/**" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="/" />
+    <None Include="icon.png" Pack="true" PackagePath="/" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="MvtNet.Tests" />

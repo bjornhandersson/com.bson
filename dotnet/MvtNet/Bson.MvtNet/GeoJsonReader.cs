@@ -2,41 +2,43 @@ using System.Text.Json;
 
 namespace Bson.MvtNet;
 
+// Lenient by default: anything malformed is skipped. In strict mode the same
+// conditions throw FormatException so callers can see why nothing rendered.
 internal static class GeoJsonReader
 {
-    public static void Read(LayerBuilder layer, JsonElement root)
+    public static void Read(LayerBuilder layer, JsonElement root, bool strict)
     {
         if (root.ValueKind != JsonValueKind.Object)
         {
+            Fail(strict, "GeoJSON root must be an object.");
             return;
         }
 
-        if (
-            !root.TryGetProperty("type", out var typeEl)
-            || typeEl.ValueKind != JsonValueKind.String
-        )
+        if (!TryGetType(root, out var type))
         {
+            Fail(strict, "GeoJSON object is missing a string \"type\" member.");
             return;
         }
 
-        switch (typeEl.GetString())
+        switch (type)
         {
             case "FeatureCollection":
-                ReadFeatureCollection(layer, root);
+                ReadFeatureCollection(layer, root, strict);
                 return;
             case "Feature":
-                ReadFeature(layer, root);
+                ReadFeature(layer, root, strict);
                 return;
             default:
-                ReadGeometry(layer, root, null);
+                ReadGeometry(layer, root, null, strict);
                 return;
         }
     }
 
-    private static void ReadFeatureCollection(LayerBuilder layer, JsonElement el)
+    private static void ReadFeatureCollection(LayerBuilder layer, JsonElement el, bool strict)
     {
         if (!el.TryGetProperty("features", out var feats) || feats.ValueKind != JsonValueKind.Array)
         {
+            Fail(strict, "FeatureCollection is missing a \"features\" array.");
             return;
         }
 
@@ -46,9 +48,15 @@ internal static class GeoJsonReader
 
         foreach (var feature in feats.EnumerateArray())
         {
+            if (strict)
+            {
+                ReadFeature(layer, feature, strict, propertyBuffer);
+                continue;
+            }
+
             try
             {
-                ReadFeature(layer, feature, propertyBuffer);
+                ReadFeature(layer, feature, strict, propertyBuffer);
             }
             catch
             {
@@ -60,15 +68,24 @@ internal static class GeoJsonReader
     private static void ReadFeature(
         LayerBuilder layer,
         JsonElement el,
+        bool strict,
         Dictionary<string, object>? propertyBuffer = null
     )
     {
         if (el.ValueKind != JsonValueKind.Object)
         {
+            Fail(strict, "Feature must be an object.");
             return;
         }
 
         if (!el.TryGetProperty("geometry", out var geom))
+        {
+            Fail(strict, "Feature is missing a \"geometry\" member.");
+            return;
+        }
+
+        // An unlocated feature; valid GeoJSON, nothing to draw.
+        if (geom.ValueKind == JsonValueKind.Null)
         {
             return;
         }
@@ -82,47 +99,53 @@ internal static class GeoJsonReader
             attrs = ExtractScalarProperties(props, propertyBuffer);
         }
 
-        ReadGeometry(layer, geom, attrs);
+        ReadGeometry(layer, geom, attrs, strict);
     }
 
     private static void ReadGeometry(
         LayerBuilder layer,
         JsonElement el,
-        Dictionary<string, object>? attrs
+        Dictionary<string, object>? attrs,
+        bool strict
     )
     {
         if (el.ValueKind != JsonValueKind.Object)
         {
+            Fail(strict, "Geometry must be an object.");
             return;
         }
 
-        if (!el.TryGetProperty("type", out var typeEl) || typeEl.ValueKind != JsonValueKind.String)
+        if (!TryGetType(el, out var type))
         {
+            Fail(strict, "Geometry is missing a string \"type\" member.");
             return;
         }
 
-        switch (typeEl.GetString())
+        switch (type)
         {
             case "Point":
-                ReadPoint(layer, el, attrs);
+                ReadPoint(layer, el, attrs, strict);
                 return;
             case "MultiPoint":
-                ReadMultiPoint(layer, el, attrs);
+                ReadMultiPoint(layer, el, attrs, strict);
                 return;
             case "LineString":
-                ReadLineString(layer, el, attrs);
+                ReadLineString(layer, el, attrs, strict);
                 return;
             case "MultiLineString":
-                ReadMultiLineString(layer, el, attrs);
+                ReadMultiLineString(layer, el, attrs, strict);
                 return;
             case "Polygon":
-                ReadPolygon(layer, el, attrs);
+                ReadPolygon(layer, el, attrs, strict);
                 return;
             case "MultiPolygon":
-                ReadMultiPolygon(layer, el, attrs);
+                ReadMultiPolygon(layer, el, attrs, strict);
                 return;
             case "GeometryCollection":
-                ReadGeometryCollection(layer, el, attrs);
+                ReadGeometryCollection(layer, el, attrs, strict);
+                return;
+            default:
+                Fail(strict, $"Unknown GeoJSON type \"{type}\".");
                 return;
         }
     }
@@ -130,15 +153,16 @@ internal static class GeoJsonReader
     private static void ReadPoint(
         LayerBuilder layer,
         JsonElement el,
-        Dictionary<string, object>? attrs
+        Dictionary<string, object>? attrs,
+        bool strict
     )
     {
-        if (!TryGetCoordinates(el, out var coords))
+        if (!TryGetCoordinates(el, strict, out var coords))
         {
             return;
         }
 
-        if (TryReadCoord(coords, out var lat, out var lng))
+        if (TryReadCoord(coords, strict, out var lat, out var lng))
         {
             layer.AddPoint(lat, lng, attrs);
         }
@@ -147,17 +171,18 @@ internal static class GeoJsonReader
     private static void ReadMultiPoint(
         LayerBuilder layer,
         JsonElement el,
-        Dictionary<string, object>? attrs
+        Dictionary<string, object>? attrs,
+        bool strict
     )
     {
-        if (!TryGetCoordinates(el, out var coords) || coords.ValueKind != JsonValueKind.Array)
+        if (!TryGetCoordinateArray(el, strict, out var coords))
         {
             return;
         }
 
         foreach (var p in coords.EnumerateArray())
         {
-            if (TryReadCoord(p, out var lat, out var lng))
+            if (TryReadCoord(p, strict, out var lat, out var lng))
             {
                 layer.AddPoint(lat, lng, attrs);
             }
@@ -167,102 +192,117 @@ internal static class GeoJsonReader
     private static void ReadLineString(
         LayerBuilder layer,
         JsonElement el,
-        Dictionary<string, object>? attrs
+        Dictionary<string, object>? attrs,
+        bool strict
     )
     {
-        if (!TryGetCoordinates(el, out var coords))
+        if (!TryGetCoordinates(el, strict, out var coords))
         {
             return;
         }
 
-        var line = ReadCoordArray(coords);
-        if (line.Length >= 2)
+        var line = ReadCoordArray(coords, strict);
+        if (line.Length < 2)
         {
-            layer.AddLineString(line, attrs);
+            Fail(strict, "LineString needs at least 2 positions.");
+            return;
         }
+
+        layer.AddLineString(line, attrs);
     }
 
     private static void ReadMultiLineString(
         LayerBuilder layer,
         JsonElement el,
-        Dictionary<string, object>? attrs
+        Dictionary<string, object>? attrs,
+        bool strict
     )
     {
-        if (!TryGetCoordinates(el, out var coords) || coords.ValueKind != JsonValueKind.Array)
+        if (!TryGetCoordinateArray(el, strict, out var coords))
         {
             return;
         }
 
         foreach (var lineEl in coords.EnumerateArray())
         {
-            var line = ReadCoordArray(lineEl);
-            if (line.Length >= 2)
+            var line = ReadCoordArray(lineEl, strict);
+            if (line.Length < 2)
             {
-                layer.AddLineString(line, attrs);
+                Fail(strict, "LineString needs at least 2 positions.");
+                continue;
             }
+
+            layer.AddLineString(line, attrs);
         }
     }
 
     private static void ReadPolygon(
         LayerBuilder layer,
         JsonElement el,
-        Dictionary<string, object>? attrs
+        Dictionary<string, object>? attrs,
+        bool strict
     )
     {
-        if (!TryGetCoordinates(el, out var coords))
+        if (!TryGetCoordinates(el, strict, out var coords))
         {
             return;
         }
 
-        EmitPolygon(layer, coords, attrs);
+        EmitPolygon(layer, coords, attrs, strict);
     }
 
     private static void ReadMultiPolygon(
         LayerBuilder layer,
         JsonElement el,
-        Dictionary<string, object>? attrs
+        Dictionary<string, object>? attrs,
+        bool strict
     )
     {
-        if (!TryGetCoordinates(el, out var coords) || coords.ValueKind != JsonValueKind.Array)
+        if (!TryGetCoordinateArray(el, strict, out var coords))
         {
             return;
         }
 
         foreach (var poly in coords.EnumerateArray())
         {
-            EmitPolygon(layer, poly, attrs);
+            EmitPolygon(layer, poly, attrs, strict);
         }
     }
 
     private static void EmitPolygon(
         LayerBuilder layer,
         JsonElement polygonEl,
-        Dictionary<string, object>? attrs
+        Dictionary<string, object>? attrs,
+        bool strict
     )
     {
         if (polygonEl.ValueKind != JsonValueKind.Array)
         {
+            Fail(strict, "Polygon coordinates must be an array of rings.");
             return;
         }
 
         var ringEnumerator = polygonEl.EnumerateArray();
         if (!ringEnumerator.MoveNext())
         {
+            Fail(strict, "Polygon has no rings.");
             return;
         }
 
-        var outer = ReadRing(ringEnumerator.Current);
+        var outer = ReadRing(ringEnumerator.Current, strict);
         if (outer.Length < 3)
         {
+            Fail(strict, "Polygon ring needs at least 3 distinct positions.");
             return;
         }
 
         List<(double Lat, double Lng)[]>? holes = null;
         while (ringEnumerator.MoveNext())
         {
-            var hole = ReadRing(ringEnumerator.Current);
+            var hole = ReadRing(ringEnumerator.Current, strict);
             if (hole.Length < 3)
             {
+                Fail(strict, "Polygon ring needs at least 3 distinct positions.");
                 continue;
             }
             holes ??= new List<(double Lat, double Lng)[]>();
@@ -281,7 +321,8 @@ internal static class GeoJsonReader
     private static void ReadGeometryCollection(
         LayerBuilder layer,
         JsonElement el,
-        Dictionary<string, object>? attrs
+        Dictionary<string, object>? attrs,
+        bool strict
     )
     {
         if (
@@ -289,19 +330,21 @@ internal static class GeoJsonReader
             || geoms.ValueKind != JsonValueKind.Array
         )
         {
+            Fail(strict, "GeometryCollection is missing a \"geometries\" array.");
             return;
         }
 
         foreach (var geom in geoms.EnumerateArray())
         {
-            ReadGeometry(layer, geom, attrs);
+            ReadGeometry(layer, geom, attrs, strict);
         }
     }
 
-    private static (double Lat, double Lng)[] ReadCoordArray(JsonElement coords)
+    private static (double Lat, double Lng)[] ReadCoordArray(JsonElement coords, bool strict)
     {
         if (coords.ValueKind != JsonValueKind.Array)
         {
+            Fail(strict, "Coordinates must be an array of positions.");
             return Array.Empty<(double Lat, double Lng)>();
         }
 
@@ -309,7 +352,7 @@ internal static class GeoJsonReader
         int count = 0;
         foreach (var p in coords.EnumerateArray())
         {
-            if (TryReadCoord(p, out var lat, out var lng))
+            if (TryReadCoord(p, strict, out var lat, out var lng))
             {
                 result[count++] = (lat, lng);
             }
@@ -323,9 +366,9 @@ internal static class GeoJsonReader
         return result;
     }
 
-    private static (double Lat, double Lng)[] ReadRing(JsonElement ringEl)
+    private static (double Lat, double Lng)[] ReadRing(JsonElement ringEl, bool strict)
     {
-        var pts = ReadCoordArray(ringEl);
+        var pts = ReadCoordArray(ringEl, strict);
         if (pts.Length > 1 && pts[0] == pts[pts.Length - 1])
         {
             Array.Resize(ref pts, pts.Length - 1);
@@ -333,22 +376,53 @@ internal static class GeoJsonReader
         return pts;
     }
 
-    private static bool TryGetCoordinates(JsonElement geom, out JsonElement coords)
+    private static bool TryGetType(JsonElement el, out string type)
+    {
+        if (el.TryGetProperty("type", out var typeEl) && typeEl.ValueKind == JsonValueKind.String)
+        {
+            type = typeEl.GetString()!;
+            return true;
+        }
+
+        type = "";
+        return false;
+    }
+
+    private static bool TryGetCoordinates(JsonElement geom, bool strict, out JsonElement coords)
     {
         if (geom.TryGetProperty("coordinates", out coords))
         {
             return true;
         }
+
+        Fail(strict, "Geometry is missing a \"coordinates\" member.");
         coords = default;
         return false;
     }
 
-    private static bool TryReadCoord(JsonElement el, out double lat, out double lng)
+    private static bool TryGetCoordinateArray(JsonElement geom, bool strict, out JsonElement coords)
+    {
+        if (!TryGetCoordinates(geom, strict, out coords))
+        {
+            return false;
+        }
+
+        if (coords.ValueKind != JsonValueKind.Array)
+        {
+            Fail(strict, "Coordinates must be an array.");
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool TryReadCoord(JsonElement el, bool strict, out double lat, out double lng)
     {
         lat = 0;
         lng = 0;
         if (el.ValueKind != JsonValueKind.Array || el.GetArrayLength() < 2)
         {
+            Fail(strict, "A position must be an array of at least [longitude, latitude].");
             return false;
         }
 
@@ -356,6 +430,7 @@ internal static class GeoJsonReader
         var latEl = el[1];
         if (lngEl.ValueKind != JsonValueKind.Number || latEl.ValueKind != JsonValueKind.Number)
         {
+            Fail(strict, "Position coordinates must be numbers.");
             return false;
         }
 
@@ -396,5 +471,13 @@ internal static class GeoJsonReader
         }
 
         return attrs;
+    }
+
+    private static void Fail(bool strict, string message)
+    {
+        if (strict)
+        {
+            throw new FormatException(message);
+        }
     }
 }

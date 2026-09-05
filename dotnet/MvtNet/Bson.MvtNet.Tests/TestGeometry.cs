@@ -54,4 +54,51 @@ internal static class TestGeometry
 
         return rings;
     }
+
+    /// <summary>
+    /// Decodes Point / LineString / MultiLineString geometry: every MoveTo
+    /// starts a new part, and the last part is flushed at the end.
+    /// </summary>
+    public static List<TileCoord[]> DecodeParts(IReadOnlyList<uint> geometry)
+    {
+        var parts = new List<TileCoord[]>();
+        var current = new List<TileCoord>();
+        int x = 0,
+            y = 0;
+        int i = 0;
+
+        static int Unzig(uint v) => (int)(v >> 1) ^ -(int)(v & 1);
+
+        while (i < geometry.Count)
+        {
+            uint cmd = geometry[i++];
+            uint id = cmd & 0x7;
+            uint count = cmd >> 3;
+
+            if (id == 1 && current.Count > 0)
+            {
+                parts.Add(current.ToArray());
+                current.Clear();
+            }
+
+            if (id != 1 && id != 2)
+            {
+                throw new InvalidOperationException($"Unexpected command id {id} in line geometry");
+            }
+
+            for (uint n = 0; n < count; n++)
+            {
+                x += Unzig(geometry[i++]);
+                y += Unzig(geometry[i++]);
+                current.Add(new TileCoord(x, y));
+            }
+        }
+
+        if (current.Count > 0)
+        {
+            parts.Add(current.ToArray());
+        }
+
+        return parts;
+    }
 }

@@ -79,8 +79,42 @@ public class TagEncoderTests
         var encoder = new TagEncoder();
 
         Assert.Throws<ArgumentException>(() =>
-            encoder.Encode(new Dictionary<string, object> { ["date"] = DateTime.Now })
+            encoder.Encode(new Dictionary<string, object> { ["tags"] = new[] { "a", "b" } })
         );
+    }
+
+    [Test]
+    public void Encode_GuidAndDates_BecomeIso8601Strings()
+    {
+        var encoder = new TagEncoder();
+        var guid = Guid.NewGuid();
+        var utc = new DateTime(2026, 9, 5, 12, 30, 0, DateTimeKind.Utc);
+        var offset = new DateTimeOffset(2026, 9, 5, 14, 30, 0, TimeSpan.FromHours(2));
+
+        encoder.Encode(
+            new Dictionary<string, object>
+            {
+                ["id"] = guid,
+                ["seen"] = utc,
+                ["local"] = offset,
+                ["grade"] = 'A',
+            }
+        );
+
+        Assert.That(encoder.Values[0].StringValue, Is.EqualTo(guid.ToString()));
+        Assert.That(encoder.Values[1].StringValue, Is.EqualTo("2026-09-05T12:30:00.0000000Z"));
+        Assert.That(encoder.Values[2].StringValue, Is.EqualTo("2026-09-05T14:30:00.0000000+02:00"));
+        Assert.That(encoder.Values[3].StringValue, Is.EqualTo("A"));
+    }
+
+    [Test]
+    public void Encode_TypedDictionary_Works()
+    {
+        var encoder = new TagEncoder();
+        var tags = encoder.Encode(new Dictionary<string, double> { ["speed"] = 82.5 });
+
+        Assert.That(tags, Is.EqualTo(new uint[] { 0, 0 }));
+        Assert.That(encoder.Values[0].DoubleValue, Is.EqualTo(82.5));
     }
 
     [Test]

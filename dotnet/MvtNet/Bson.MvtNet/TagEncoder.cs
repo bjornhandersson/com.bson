@@ -18,10 +18,10 @@ internal class TagEncoder
     private readonly List<string> _keyList = new();
     private readonly List<Tile.Types.Value> _valueList = new();
 
-    public uint[] Encode(IEnumerable<KeyValuePair<string, object>> attributes)
+    public uint[] Encode<TValue>(IEnumerable<KeyValuePair<string, TValue>> attributes)
     {
         // Fast path for the common Dictionary case where Count is known
-        if (attributes is ICollection<KeyValuePair<string, object>> collection)
+        if (attributes is ICollection<KeyValuePair<string, TValue>> collection)
         {
             var tags = new uint[collection.Count * 2];
             int pos = 0;
@@ -55,12 +55,12 @@ internal class TagEncoder
         return tagList.ToArray();
     }
 
-    public void EncodeInto(
-        IEnumerable<KeyValuePair<string, object>> attributes,
+    public void EncodeInto<TValue>(
+        IEnumerable<KeyValuePair<string, TValue>> attributes,
         RepeatedField<uint> tags
     )
     {
-        if (attributes is ICollection<KeyValuePair<string, object>> collection)
+        if (attributes is ICollection<KeyValuePair<string, TValue>> collection)
         {
             tags.Capacity = Math.Max(tags.Capacity, tags.Count + collection.Count * 2);
         }
@@ -153,6 +153,10 @@ internal class TagEncoder
             ulong ul => GetOrAddUintValue(ul),
             decimal m => GetOrAddDoubleValue((double)m),
             Enum e => GetOrAddStringValue(e.ToString()),
+            char c => GetOrAddStringValue(c.ToString()),
+            Guid g => GetOrAddStringValue(g.ToString()),
+            DateTime dt => GetOrAddStringValue(dt.ToString("o")),
+            DateTimeOffset dto => GetOrAddStringValue(dto.ToString("o")),
             _ => throw new ArgumentException(
                 $"Unsupported tag value type: {value.GetType().Name}",
                 nameof(value)

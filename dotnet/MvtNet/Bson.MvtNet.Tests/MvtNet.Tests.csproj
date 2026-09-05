@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- Nullability mismatches on attribute dictionaries are an API bug, not a warning. -->
+    <WarningsAsErrors>$(WarningsAsErrors);CS8620</WarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />

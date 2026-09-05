@@ -44,6 +44,55 @@ internal static class GeometryEncoder
         return commands;
     }
 
+    // Each part is a MoveTo + LineTo run; the cursor carries over between parts.
+    public static uint[] EncodeMultiLineString(IReadOnlyList<TileCoord[]> parts)
+    {
+        if (parts.Count == 0)
+        {
+            throw new ArgumentException("MultiLineString requires at least one part.", nameof(parts));
+        }
+
+        int count = 0;
+        for (int p = 0; p < parts.Count; p++)
+        {
+            if (parts[p].Length < 2)
+            {
+                throw new ArgumentException(
+                    "LineString requires at least 2 coordinates.",
+                    nameof(parts)
+                );
+            }
+            count += 3 + 1 + (parts[p].Length - 1) * 2;
+        }
+
+        var commands = new uint[count];
+        int pos = 0;
+        int prevX = 0;
+        int prevY = 0;
+
+        for (int p = 0; p < parts.Count; p++)
+        {
+            var part = parts[p];
+
+            commands[pos++] = CommandInteger(MoveToId, 1);
+            commands[pos++] = ZigZag(part[0].X - prevX);
+            commands[pos++] = ZigZag(part[0].Y - prevY);
+            prevX = part[0].X;
+            prevY = part[0].Y;
+
+            commands[pos++] = CommandInteger(LineToId, (uint)(part.Length - 1));
+            for (int i = 1; i < part.Length; i++)
+            {
+                commands[pos++] = ZigZag(part[i].X - prevX);
+                commands[pos++] = ZigZag(part[i].Y - prevY);
+                prevX = part[i].X;
+                prevY = part[i].Y;
+            }
+        }
+
+        return commands;
+    }
+
     // The ring must not repeat its first point; ClosePath closes it.
     public static uint[] EncodePolygon(ReadOnlySpan<TileCoord> ring)
     {

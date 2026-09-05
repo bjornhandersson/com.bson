@@ -19,11 +19,11 @@ dotnet add package Bson.MvtNet
 
 ```csharp
 var tile = new TileBuilder(z, x, y);
-tile.Layer("trucks").AddPoint(lat, lng, new() { ["speed"] = 82.5 });
+tile.Layer("trucks").AddPoint(lat, lng, new Dictionary<string, object> { ["speed"] = 82.5 });
 return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
 ```
 
-Projection, clipping, and protobuf encoding happen automatically. Bridge tile coordinates to geohash prefixes for fast SQL lookups with `TileGeohash`.
+Projection, clipping, and protobuf encoding happen automatically. Bridge tile coordinates to geohash prefixes for fast SQL lookups with `TileGeohash`. Targets netstandard2.0 and net6.0.
 
 [Read more &rarr;](dotnet/MvtNet/README.md)
 
