@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>Bson.MvtNet</PackageId>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <Authors>bson</Authors>
     <Description>Encode Mapbox Vector Tiles (MVT 2.1) from plain C#: WGS84 points, lines, polygons or GeoJSON in, protobuf tiles out. Projection, clipping and tag interning are handled for you. No GIS stack, no dependencies.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>

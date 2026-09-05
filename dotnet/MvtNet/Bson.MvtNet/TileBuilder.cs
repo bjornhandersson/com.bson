@@ -536,8 +536,6 @@ public sealed class LayerBuilder
 
     private bool OverlapsTile(ReadOnlySpan<(double Lat, double Lng)> coords)
     {
-        var tileBounds = _ctx.Bounds;
-
         double minLat = double.MaxValue,
             maxLat = double.MinValue;
         double minLng = double.MaxValue,
@@ -563,10 +561,12 @@ public sealed class LayerBuilder
             }
         }
 
-        return maxLat >= tileBounds.South
-            && minLat <= tileBounds.North
-            && maxLng >= tileBounds.West
-            && minLng <= tileBounds.East;
+        var (minX, minY) = TileMath.ProjectUnrounded(maxLat, minLng, _ctx);
+        var (maxX, maxY) = TileMath.ProjectUnrounded(minLat, maxLng, _ctx);
+        double min = -_clipBuffer;
+        double max = _extent + _clipBuffer;
+
+        return maxX >= min && minX <= max && maxY >= min && minY <= max;
     }
 
     private TileCoord[] ProjectAll(ReadOnlySpan<(double Lat, double Lng)> coords)

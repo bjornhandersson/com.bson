@@ -66,6 +66,18 @@ public class TileMathTests
     }
 
     [Test]
+    public void ProjectWithContext_FarSideOfWorldAtHighZoom_SaturatesOnCorrectSide()
+    {
+        var ctx = TileMath.CreateProjectionContext(20, 0, 524288);
+
+        var farEast = TileMath.ProjectWithContext(0, 179.99, ctx);
+        var farSouth = TileMath.ProjectWithContext(-89, 0, ctx);
+
+        Assert.That(farEast.X, Is.EqualTo(int.MaxValue));
+        Assert.That(farSouth.Y, Is.EqualTo(int.MaxValue));
+    }
+
+    [Test]
     public void TryProjectWithinBuffer_AtHighZoom_StillWorks()
     {
         // z18 — very zoomed in

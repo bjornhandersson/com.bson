@@ -16,6 +16,25 @@ public class LineClipperTests
     }
 
     [Test]
+    public void Clip_ConsecutiveVerticesOnSamePixel_CollapsedToOne()
+    {
+        TileCoord[] coords = [new(100, 100), new(100, 100), new(100, 100), new(200, 200), new(200, 200)];
+
+        var segments = LineClipper.Clip(coords, Extent);
+
+        Assert.That(segments, Has.Count.EqualTo(1));
+        Assert.That(segments[0], Is.EqualTo(new TileCoord[] { new(100, 100), new(200, 200) }));
+    }
+
+    [Test]
+    public void Clip_AllVerticesOnSamePixel_ReturnsEmpty()
+    {
+        TileCoord[] coords = [new(100, 100), new(100, 100), new(100, 100)];
+
+        Assert.That(LineClipper.Clip(coords, Extent), Is.Empty);
+    }
+
+    [Test]
     public void Clip_LineFullyOutside_ReturnsEmpty()
     {
         // Line far to the right of tile

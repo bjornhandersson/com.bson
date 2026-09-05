@@ -186,6 +186,12 @@ Features are encoded as they are added, so `Build()` is a size pass and one copy
 
 ## Release notes
 
+### 1.2.1
+
+- Fixed: consecutive vertices that land on the same tile pixel produced zero-length LineTo steps, which the spec forbids. A 1,000-point GPS track at low zoom now encodes only the handful of pixels it actually covers.
+- Fixed: the fast overlap check used the bare tile bounds while the clippers use the tile plus its 5% buffer, so a line or polygon lying just outside the tile edge was dropped while a point at the same position was kept.
+- Fixed: vertices far outside the tile at high zoom could wrap to the wrong side on x64 .NET 8 and .NET Framework. Projection now saturates.
+
 ### 1.2.0
 
 - Google.Protobuf is no longer a dependency. Tiles are written straight to the protobuf wire format, feature by feature, as they are added. The .NET 6+ package has no dependencies at all.

@@ -50,7 +50,11 @@ internal static class LineClipper
                 current.Add(clippedA);
             }
 
-            current.Add(clippedB);
+            bool zeroLengthStep = clippedB == current[current.Count - 1];
+            if (!zeroLengthStep)
+            {
+                current.Add(clippedB);
+            }
         }
 
         EndRun(segments, current);

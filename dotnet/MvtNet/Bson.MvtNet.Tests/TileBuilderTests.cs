@@ -19,7 +19,7 @@ public class TileBuilderTests
                 18.0440866,
                 new Dictionary<string, object> { ["name"] = "Stockholm" }
             )
-            .Build();
+            .Tile.Build();
 
         var tile = Tile.Parser.ParseFrom(bytes);
 
@@ -126,7 +126,7 @@ public class TileBuilderTests
         var bytes = new TileBuilder(Z, X, Y)
             .Layer("geofences")
             .AddPolygon(outer, new[] { hole }, new Dictionary<string, object> { ["name"] = "Ring" })
-            .Build();
+            .Tile.Build();
 
         var tile = Tile.Parser.ParseFrom(bytes);
 
@@ -156,7 +156,7 @@ public class TileBuilderTests
         var bytes = new TileBuilder(Z, X, Y)
             .Layer("geofences")
             .AddPolygon(outer, new[] { badHole })
-            .Build();
+            .Tile.Build();
 
         var tile = Tile.Parser.ParseFrom(bytes);
         var feature = tile.Layers[0].Features[0];
@@ -259,6 +259,78 @@ public class TileBuilderTests
     }
 
     [Test]
+    public void Build_LineStringWithVerticesOnSamePixel_HasNoZeroLengthLineTo()
+    {
+        var builder = new TileBuilder(5, 17, 9);
+        var track = Enumerable
+            .Range(0, 1000)
+            .Select(i => (59.3281936 + i * 0.00001, 18.0440866 + i * 0.00001))
+            .ToArray();
+
+        builder.Layer("tracks").AddLineString(track);
+
+        var tile = Tile.Parser.ParseFrom(builder.Build());
+        var parts = TestGeometry.DecodeParts(tile.Layers[0].Features[0].Geometry);
+
+        Assert.That(parts, Has.Count.EqualTo(1));
+        Assert.That(parts[0], Has.Length.InRange(2, 20));
+        for (int i = 1; i < parts[0].Length; i++)
+        {
+            Assert.That(parts[0][i], Is.Not.EqualTo(parts[0][i - 1]));
+        }
+    }
+
+    [Test]
+    public void Build_LineStringOutsideTileButInsideBuffer_IsKept()
+    {
+        var bounds = TileMath.GetTileBounds(Z, X, Y);
+        double lng = bounds.East + 0.02 * (bounds.East - bounds.West);
+        double latSpan = bounds.North - bounds.South;
+
+        var builder = new TileBuilder(Z, X, Y);
+        builder
+            .Layer("tracks")
+            .AddLineString(
+                new (double, double)[]
+                {
+                    (bounds.South + 0.3 * latSpan, lng),
+                    (bounds.South + 0.7 * latSpan, lng),
+                }
+            );
+
+        var tile = Tile.Parser.ParseFrom(builder.Build());
+
+        Assert.That(tile.Layers[0].Features, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void Build_PolygonOutsideTileButInsideBuffer_IsKept()
+    {
+        var bounds = TileMath.GetTileBounds(Z, X, Y);
+        double lngSpan = bounds.East - bounds.West;
+        double latSpan = bounds.North - bounds.South;
+        double west = bounds.East + 0.01 * lngSpan;
+        double east = bounds.East + 0.03 * lngSpan;
+
+        var builder = new TileBuilder(Z, X, Y);
+        builder
+            .Layer("zones")
+            .AddPolygon(
+                new (double, double)[]
+                {
+                    (bounds.South + 0.3 * latSpan, west),
+                    (bounds.South + 0.3 * latSpan, east),
+                    (bounds.South + 0.7 * latSpan, east),
+                    (bounds.South + 0.7 * latSpan, west),
+                }
+            );
+
+        var tile = Tile.Parser.ParseFrom(builder.Build());
+
+        Assert.That(tile.Layers[0].Features, Has.Count.EqualTo(1));
+    }
+
+    [Test]
     public void Build_PolygonOutsideTile_NotAdded()
     {
         var builder = new TileBuilder(10, 0, 0);
@@ -300,7 +372,7 @@ public class TileBuilderTests
             .AddPoint(59.3281936, 18.0440866)
             .AddPoint(59.3326, 18.0649)
             .AddPoint(59.3190, 18.0686)
-            .Build();
+            .Tile.Build();
 
         var tile = Tile.Parser.ParseFrom(bytes);
 
@@ -428,7 +500,7 @@ public class TileBuilderTests
         var bytes = new TileBuilder(Z, X, Y)
             .Layer("geofences")
             .AddPolygon(outer, new[] { hole })
-            .Build();
+            .Tile.Build();
         var tile = Tile.Parser.ParseFrom(bytes);
 
         var rings = TestGeometry.DecodeRings(tile.Layers[0].Features[0].Geometry);
@@ -467,7 +539,7 @@ public class TileBuilderTests
                 18.0440866,
                 new Dictionary<string, object> { ["name"] = "Stockholm", ["note"] = null! }
             )
-            .Build();
+            .Tile.Build();
 
         var tile = Tile.Parser.ParseFrom(bytes);
         var layer = tile.Layers[0];
@@ -496,7 +568,7 @@ public class TileBuilderTests
         var fromLinq = new TileBuilder(Z, X, Y)
             .Layer("tracks")
             .AddLineString(points.Select(p => (p.Lat, p.Lng)))
-            .Build();
+            .Tile.Build();
         var fromArray = new TileBuilder(Z, X, Y).Layer("tracks").AddLineString(points.ToArray()).Tile.Build();
 
         Assert.That(Tile.Parser.ParseFrom(fromList).Layers[0].Features, Has.Count.EqualTo(1));
@@ -551,16 +623,5 @@ public class TileBuilderTests
         tile.Build(ms);
 
         Assert.That(ms.ToArray(), Is.EqualTo(bytes));
-    }
-
-    [Test]
-    public void LayerBuilder_BuildToStream_MatchesByteArray()
-    {
-        var layer = new TileBuilder(Z, X, Y).Layer("points").AddPoint(59.3281936, 18.0440866);
-
-        using var ms = new MemoryStream();
-        layer.Build(ms);
-
-        Assert.That(ms.ToArray(), Is.EqualTo(layer.Build()));
     }
 }

@@ -23,14 +23,34 @@ internal static class TileMath
         in TileProjectionContext ctx
     )
     {
-        double tx = (lng - ctx.West) * ctx.InvLngSpan;
-        double worldY = LatToMercatorY(lat);
-        double ty = (worldY - ctx.NorthY) * ctx.InvMercatorSpan;
+        var (px, py) = ProjectUnrounded(lat, lng, ctx);
+        return new TileCoord(RoundSaturating(px), RoundSaturating(py));
+    }
 
-        int px = (int)Math.Round(tx * ctx.Extent);
-        int py = (int)Math.Round(ty * ctx.Extent);
+    internal static (double X, double Y) ProjectUnrounded(
+        double lat,
+        double lng,
+        in TileProjectionContext ctx
+    )
+    {
+        double px = (lng - ctx.West) * ctx.InvLngSpan * ctx.Extent;
+        double py = (LatToMercatorY(lat) - ctx.NorthY) * ctx.InvMercatorSpan * ctx.Extent;
+        return (px, py);
+    }
 
-        return new TileCoord(px, py);
+    internal static int RoundSaturating(double value)
+    {
+        if (value >= int.MaxValue)
+        {
+            return int.MaxValue;
+        }
+
+        if (value <= int.MinValue)
+        {
+            return int.MinValue;
+        }
+
+        return (int)Math.Round(value);
     }
 
     internal static bool TryProjectWithinBuffer(
@@ -41,8 +61,7 @@ internal static class TileMath
         out TileCoord coord
     )
     {
-        double px = (lng - ctx.West) * ctx.InvLngSpan * ctx.Extent;
-        double py = (LatToMercatorY(lat) - ctx.NorthY) * ctx.InvMercatorSpan * ctx.Extent;
+        var (px, py) = ProjectUnrounded(lat, lng, ctx);
 
         double min = -buffer;
         double max = ctx.Extent + buffer;
