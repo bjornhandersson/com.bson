@@ -6,6 +6,6 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\raft.client\raft.client.csproj" />
+    <ProjectReference Include="..\Raft.Client\Raft.Client.csproj" />
   </ItemGroup>
 </Project>

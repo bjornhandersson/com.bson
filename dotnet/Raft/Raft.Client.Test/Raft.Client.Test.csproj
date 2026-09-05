@@ -17,6 +17,6 @@
     <Using Include="NUnit.Framework" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\raft.client\raft.client.csproj" />
+    <ProjectReference Include="..\Raft.Client\Raft.Client.csproj" />
   </ItemGroup>
 </Project>
