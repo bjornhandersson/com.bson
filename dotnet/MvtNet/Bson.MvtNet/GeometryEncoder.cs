@@ -159,6 +159,37 @@ internal static class GeometryEncoder
     }
 
     /// <summary>
+    /// Twice the signed area of a ring via the shoelace formula, in tile
+    /// coordinates (Y grows downward). Positive means clockwise on screen,
+    /// which the MVT spec requires for exterior rings; negative means
+    /// counter-clockwise, required for interior rings (holes).
+    /// </summary>
+    public static double SignedArea(ReadOnlySpan<TileCoord> ring)
+    {
+        double sum = 0;
+        for (int i = 0, j = ring.Length - 1; i < ring.Length; j = i++)
+        {
+            sum += (double)ring[j].X * ring[i].Y - (double)ring[i].X * ring[j].Y;
+        }
+
+        return sum;
+    }
+
+    /// <summary>
+    /// Reverses the ring in place if needed so an exterior ring has positive
+    /// area and an interior ring has negative area, as the MVT spec requires.
+    /// Zero-area rings are left untouched.
+    /// </summary>
+    public static void Orient(TileCoord[] ring, bool exterior)
+    {
+        double area = SignedArea(ring);
+        if (exterior ? area < 0 : area > 0)
+        {
+            Array.Reverse(ring);
+        }
+    }
+
+    /// <summary>
     /// Encodes a command integer: (id &amp; 0x7) | (count &lt;&lt; 3)
     /// </summary>
     public static uint CommandInteger(uint commandId, uint count)

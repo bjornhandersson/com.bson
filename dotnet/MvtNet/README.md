@@ -120,5 +120,6 @@ app.MapGet("/tiles/{z:int}/{x:int}/{y:int}", async (int z, int x, int y, DbConne
 - **Projection** — WGS84 lat/lng to tile pixel coordinates
 - **Clipping** — lines crossing tile boundaries are cut cleanly
 - **Encoding** — MVT spec v2.1 protobuf, delta-encoded geometry, interned tags
+- **Winding order** — polygon rings are normalized to the spec's orientation (exterior clockwise, holes counter-clockwise), whatever order you pass them in
 - **GeoJSON ingestion** — drop a whole `FeatureCollection` onto a layer in one call
 - **Geohash bridge** — tile z/x/y to geohash prefixes for indexed DB queries

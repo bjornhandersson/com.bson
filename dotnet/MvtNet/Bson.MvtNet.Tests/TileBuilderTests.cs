@@ -367,4 +367,135 @@ public class TileBuilderTests
         Assert.That(tile.Layers[0].Features, Has.Count.EqualTo(1));
         Assert.That(tile.Layers[0].Features[0].Type, Is.EqualTo(Tile.Types.GeomType.Polygon));
     }
+
+    [Test]
+    public void Build_PolygonGivenCounterClockwise_ExteriorHasPositiveArea()
+    {
+        // Same square as the clockwise tests, but walked the other way round
+        var ccwOuter = new (double, double)[]
+        {
+            (59.3400, 18.0300),
+            (59.3200, 18.0300),
+            (59.3200, 18.0700),
+            (59.3400, 18.0700),
+        };
+
+        var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddPolygon(ccwOuter).Build();
+        var tile = Tile.Parser.ParseFrom(bytes);
+
+        var rings = DecodeRings(tile.Layers[0].Features[0].Geometry);
+        Assert.That(rings, Has.Count.EqualTo(1));
+        Assert.That(GeometryEncoder.SignedArea(rings[0]), Is.Positive);
+    }
+
+    [Test]
+    public void Build_PolygonGivenClockwise_ExteriorStaysPositive()
+    {
+        var cwOuter = new (double, double)[]
+        {
+            (59.3400, 18.0300),
+            (59.3400, 18.0700),
+            (59.3200, 18.0700),
+            (59.3200, 18.0300),
+        };
+
+        var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddPolygon(cwOuter).Build();
+        var tile = Tile.Parser.ParseFrom(bytes);
+
+        var rings = DecodeRings(tile.Layers[0].Features[0].Geometry);
+        Assert.That(GeometryEncoder.SignedArea(rings[0]), Is.Positive);
+    }
+
+    [Test]
+    public void Build_PolygonWithHole_HoleHasNegativeArea_RegardlessOfInputOrder()
+    {
+        // Outer and hole both given clockwise (the common "same orientation" mistake)
+        var outer = new (double, double)[]
+        {
+            (59.3400, 18.0300),
+            (59.3400, 18.0700),
+            (59.3200, 18.0700),
+            (59.3200, 18.0300),
+        };
+        var hole = new (double, double)[]
+        {
+            (59.3350, 18.0400),
+            (59.3350, 18.0600),
+            (59.3250, 18.0600),
+            (59.3250, 18.0400),
+        };
+
+        var bytes = new TileBuilder(Z, X, Y)
+            .Layer("geofences")
+            .AddPolygon(outer, new[] { hole })
+            .Build();
+        var tile = Tile.Parser.ParseFrom(bytes);
+
+        var rings = DecodeRings(tile.Layers[0].Features[0].Geometry);
+        Assert.That(rings, Has.Count.EqualTo(2));
+        Assert.That(GeometryEncoder.SignedArea(rings[0]), Is.Positive, "exterior");
+        Assert.That(GeometryEncoder.SignedArea(rings[1]), Is.Negative, "hole");
+    }
+
+    [Test]
+    public void Build_GeoJsonPolygon_RingsAreSpecOriented()
+    {
+        // RFC 7946 orientation: exterior counter-clockwise, hole clockwise (in lng/lat)
+        const string json = """
+            {"type":"Polygon","coordinates":[
+              [[18.03,59.32],[18.07,59.32],[18.07,59.34],[18.03,59.34],[18.03,59.32]],
+              [[18.04,59.325],[18.04,59.335],[18.06,59.335],[18.06,59.325],[18.04,59.325]]
+            ]}
+            """;
+
+        var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddGeoJson(json).Build();
+        var tile = Tile.Parser.ParseFrom(bytes);
+
+        var rings = DecodeRings(tile.Layers[0].Features[0].Geometry);
+        Assert.That(rings, Has.Count.EqualTo(2));
+        Assert.That(GeometryEncoder.SignedArea(rings[0]), Is.Positive, "exterior");
+        Assert.That(GeometryEncoder.SignedArea(rings[1]), Is.Negative, "hole");
+    }
+
+    /// <summary>
+    /// Decodes MVT polygon geometry commands back into absolute-coordinate rings.
+    /// </summary>
+    private static List<TileCoord[]> DecodeRings(IReadOnlyList<uint> geometry)
+    {
+        var rings = new List<TileCoord[]>();
+        var current = new List<TileCoord>();
+        int x = 0,
+            y = 0;
+        int i = 0;
+
+        static int Unzig(uint v) => (int)(v >> 1) ^ -(int)(v & 1);
+
+        while (i < geometry.Count)
+        {
+            uint cmd = geometry[i++];
+            uint id = cmd & 0x7;
+            uint count = cmd >> 3;
+
+            switch (id)
+            {
+                case 1: // MoveTo
+                case 2: // LineTo
+                    for (uint n = 0; n < count; n++)
+                    {
+                        x += Unzig(geometry[i++]);
+                        y += Unzig(geometry[i++]);
+                        current.Add(new TileCoord(x, y));
+                    }
+                    break;
+                case 7: // ClosePath
+                    rings.Add(current.ToArray());
+                    current.Clear();
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unknown command id {id}");
+            }
+        }
+
+        return rings;
+    }
 }

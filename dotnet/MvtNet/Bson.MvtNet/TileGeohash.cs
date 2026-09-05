@@ -22,7 +22,7 @@ public static class TileGeohash
     /// Maps zoom level to geohash precision.
     /// Tuned for 4–16 prefixes per tile.
     /// </summary>
-    public static int GetPrecision(int z)
+    internal static int GetPrecision(int z)
     {
         // Geohash cell sizes vs tile widths (at equator):
         // P2: ~5.6°×11.25°   z4 tile: ~22.5° → ~4×2=8 cells

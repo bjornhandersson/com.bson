@@ -7,7 +7,7 @@ namespace Bson.MvtNet;
 /// <summary>
 /// Builds an MVT tile from WGS84 features for a given z/x/y tile address.
 /// </summary>
-public class TileBuilder
+public sealed class TileBuilder
 {
     private readonly int _z;
     private readonly int _x;
@@ -72,7 +72,7 @@ public class TileBuilder
     }
 }
 
-public class LayerBuilder
+public sealed class LayerBuilder
 {
     private readonly string _name;
     private readonly uint _extent;
@@ -168,7 +168,8 @@ public class LayerBuilder
 
     /// <summary>
     /// Adds a Polygon feature from WGS84 coordinates (outer ring only for now).
-    /// The ring should NOT repeat the first point.
+    /// The ring should NOT repeat the first point and may be given in either
+    /// winding order; it is normalized to the orientation the MVT spec requires.
     /// All coordinates are projected (even outside tile bounds) so polygons crossing
     /// tile boundaries render correctly.
     /// </summary>
@@ -188,6 +189,7 @@ public class LayerBuilder
         }
 
         var tileCoords = ProjectAll(ring);
+        GeometryEncoder.Orient(tileCoords, exterior: true);
 
         var feature = new Tile.Types.Feature { Id = _nextId++, Type = Tile.Types.GeomType.Polygon };
 
@@ -204,9 +206,10 @@ public class LayerBuilder
 
     /// <summary>
     /// Adds a Polygon feature with one or more holes. The outer ring and each
-    /// hole should NOT repeat the first point. Rings with fewer than 3 points
-    /// are silently dropped; if the outer ring is invalid the whole feature is
-    /// skipped.
+    /// hole should NOT repeat the first point and may be given in either winding
+    /// order; rings are normalized to the orientation the MVT spec requires.
+    /// Rings with fewer than 3 points are silently dropped; if the outer ring is
+    /// invalid the whole feature is skipped.
     /// </summary>
     public LayerBuilder AddPolygon(
         ReadOnlySpan<(double Lat, double Lng)> outer,
@@ -224,7 +227,10 @@ public class LayerBuilder
             return this;
         }
 
-        var rings = new List<TileCoord[]>(1 + holes.Count) { ProjectAll(outer) };
+        var outerCoords = ProjectAll(outer);
+        GeometryEncoder.Orient(outerCoords, exterior: true);
+
+        var rings = new List<TileCoord[]>(1 + holes.Count) { outerCoords };
         for (int i = 0; i < holes.Count; i++)
         {
             var hole = holes[i];
@@ -232,7 +238,9 @@ public class LayerBuilder
             {
                 continue;
             }
-            rings.Add(ProjectAll(hole));
+            var holeCoords = ProjectAll(hole);
+            GeometryEncoder.Orient(holeCoords, exterior: false);
+            rings.Add(holeCoords);
         }
 
         var feature = new Tile.Types.Feature { Id = _nextId++, Type = Tile.Types.GeomType.Polygon };

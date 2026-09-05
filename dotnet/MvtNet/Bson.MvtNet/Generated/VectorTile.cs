@@ -12,7 +12,7 @@ using scg = global::System.Collections.Generic;
 namespace VectorTile {
 
   /// <summary>Holder for reflection information generated from Proto/vector_tile.proto</summary>
-  public static partial class VectorTileReflection {
+  internal static partial class VectorTileReflection {
 
     #region Descriptor
     /// <summary>File descriptor for Proto/vector_tile.proto</summary>
@@ -51,7 +51,7 @@ namespace VectorTile {
   }
   #region Messages
   [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
-  public sealed partial class Tile : pb::IExtendableMessage<Tile>
+  internal sealed partial class Tile : pb::IExtendableMessage<Tile>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
   #endif
@@ -285,7 +285,7 @@ namespace VectorTile {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static partial class Types {
-      public enum GeomType {
+      internal enum GeomType {
         [pbr::OriginalName("UNKNOWN")] Unknown = 0,
         [pbr::OriginalName("POINT")] Point = 1,
         [pbr::OriginalName("LINESTRING")] Linestring = 2,
@@ -293,7 +293,7 @@ namespace VectorTile {
       }
 
       [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
-      public sealed partial class Value : pb::IExtendableMessage<Value>
+      internal sealed partial class Value : pb::IExtendableMessage<Value>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
       #endif
@@ -864,7 +864,7 @@ namespace VectorTile {
       }
 
       [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
-      public sealed partial class Feature : pb::IMessage<Feature>
+      internal sealed partial class Feature : pb::IMessage<Feature>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
       #endif
@@ -1187,7 +1187,7 @@ namespace VectorTile {
       }
 
       [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
-      public sealed partial class Layer : pb::IExtendableMessage<Layer>
+      internal sealed partial class Layer : pb::IExtendableMessage<Layer>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
       #endif

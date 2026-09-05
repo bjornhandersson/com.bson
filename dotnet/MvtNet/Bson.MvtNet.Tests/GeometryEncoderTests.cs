@@ -65,4 +65,64 @@ public class GeometryEncoderTests
         // zigzag(-10)=19, zigzag(-20)=39
         Assert.That(commands, Is.EqualTo(new uint[] { 9, 19, 39 }));
     }
+
+    [Test]
+    public void SignedArea_ClockwiseOnScreen_IsPositive()
+    {
+        // Y grows downward: (0,0) -> (100,0) -> (100,100) -> (0,100) is clockwise on screen
+        TileCoord[] ring = [new(0, 0), new(100, 0), new(100, 100), new(0, 100)];
+
+        Assert.That(GeometryEncoder.SignedArea(ring), Is.EqualTo(20000.0));
+    }
+
+    [Test]
+    public void SignedArea_CounterClockwiseOnScreen_IsNegative()
+    {
+        TileCoord[] ring = [new(0, 0), new(0, 100), new(100, 100), new(100, 0)];
+
+        Assert.That(GeometryEncoder.SignedArea(ring), Is.EqualTo(-20000.0));
+    }
+
+    [Test]
+    public void Orient_Exterior_ReversesCounterClockwiseRing()
+    {
+        TileCoord[] ring = [new(0, 0), new(0, 100), new(100, 100), new(100, 0)];
+
+        GeometryEncoder.Orient(ring, exterior: true);
+
+        Assert.That(GeometryEncoder.SignedArea(ring), Is.Positive);
+        Assert.That(ring, Is.EqualTo(new TileCoord[] { new(100, 0), new(100, 100), new(0, 100), new(0, 0) }));
+    }
+
+    [Test]
+    public void Orient_Exterior_LeavesClockwiseRingUntouched()
+    {
+        TileCoord[] ring = [new(0, 0), new(100, 0), new(100, 100), new(0, 100)];
+        var original = ring.ToArray();
+
+        GeometryEncoder.Orient(ring, exterior: true);
+
+        Assert.That(ring, Is.EqualTo(original));
+    }
+
+    [Test]
+    public void Orient_Interior_ReversesClockwiseRing()
+    {
+        TileCoord[] ring = [new(0, 0), new(100, 0), new(100, 100), new(0, 100)];
+
+        GeometryEncoder.Orient(ring, exterior: false);
+
+        Assert.That(GeometryEncoder.SignedArea(ring), Is.Negative);
+    }
+
+    [Test]
+    public void Orient_ZeroAreaRing_IsUnchanged()
+    {
+        TileCoord[] ring = [new(0, 0), new(50, 50), new(100, 100)];
+        var original = ring.ToArray();
+
+        GeometryEncoder.Orient(ring, exterior: true);
+
+        Assert.That(ring, Is.EqualTo(original));
+    }
 }

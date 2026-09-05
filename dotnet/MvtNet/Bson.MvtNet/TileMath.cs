@@ -3,7 +3,7 @@ namespace Bson.MvtNet;
 /// <summary>
 /// Converts WGS84 coordinates to tile-local coordinates using Web Mercator projection.
 /// </summary>
-public static class TileMath
+internal static class TileMath
 {
     public const uint DefaultExtent = 4096;
 
@@ -166,6 +166,6 @@ internal readonly record struct TileProjectionContext(
     public double West => Bounds.West;
 }
 
-public readonly record struct TileBounds(double North, double South, double East, double West);
+internal readonly record struct TileBounds(double North, double South, double East, double West);
 
-public readonly record struct TileCoord(int X, int Y);
+internal readonly record struct TileCoord(int X, int Y);

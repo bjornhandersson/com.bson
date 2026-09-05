@@ -22,7 +22,7 @@
     />
   </ItemGroup>
   <ItemGroup Condition="'$(SKIP_PROTOC)' != 'true'">
-    <Protobuf Include="Proto/vector_tile.proto" CompileOutputs="true" GrpcServices="None" />
+    <Protobuf Include="Proto/vector_tile.proto" CompileOutputs="true" GrpcServices="None" Access="Internal" />
     <Compile Remove="Generated/**" />
   </ItemGroup>
   <ItemGroup>
