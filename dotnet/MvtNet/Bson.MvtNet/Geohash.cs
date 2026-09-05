@@ -184,4 +184,11 @@ public static class Geohash
     }
 }
 
+/// <summary>
+/// WGS84 bounding box of a geohash cell, in degrees.
+/// </summary>
+/// <param name="South">Southern latitude.</param>
+/// <param name="North">Northern latitude.</param>
+/// <param name="West">Western longitude.</param>
+/// <param name="East">Eastern longitude.</param>
 public readonly record struct GeohashBounds(double South, double North, double West, double East);

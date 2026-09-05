@@ -15,6 +15,14 @@ public sealed class TileBuilder
     private readonly uint _extent;
     private readonly Dictionary<string, LayerBuilder> _layers = new();
 
+    /// <summary>
+    /// Creates a builder for the tile at the given XYZ address.
+    /// </summary>
+    /// <param name="z">Zoom level, 0 to 30.</param>
+    /// <param name="x">Tile column, 0 to 2^z - 1.</param>
+    /// <param name="y">Tile row (XYZ scheme, 0 at the north), 0 to 2^z - 1.</param>
+    /// <param name="extent">Tile-local coordinate resolution. The spec default of 4096 suits almost all uses.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when z, x or y is outside its valid range.</exception>
     public TileBuilder(int z, int x, int y, uint extent = TileMath.DefaultExtent)
     {
         if (z < 0 || z > 30)
@@ -48,6 +56,11 @@ public sealed class TileBuilder
         _extent = extent;
     }
 
+    /// <summary>
+    /// Returns the layer with the given name, creating it on first use. Calling
+    /// this again with the same name returns the same layer, so features from
+    /// several sources can be added to one layer.
+    /// </summary>
     public LayerBuilder Layer(string name)
     {
         if (!_layers.TryGetValue(name, out var layer))
@@ -59,6 +72,10 @@ public sealed class TileBuilder
         return layer;
     }
 
+    /// <summary>
+    /// Serializes all layers into an MVT protobuf, ready to be served as
+    /// <c>application/vnd.mapbox-vector-tile</c>.
+    /// </summary>
     public byte[] Build()
     {
         var tile = new Tile();
