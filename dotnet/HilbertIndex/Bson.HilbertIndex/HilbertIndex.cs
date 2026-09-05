@@ -19,12 +19,30 @@ namespace Bson.HilbertIndex
         /// </summary>
         /// <param name="items">A set of IHilbertIndexable sorted according to IHilbertIndexable.Hid</param>
         public HilbertIndex(IEnumerable<T> items)
+            : this(items, new HilbertCode())
+        {
+        }
+
+        /// <summary>
+        /// Create a new index with a set of IHilbertIndexable using a specific HilbertCode (resolution and projection).
+        /// </summary>
+        /// <param name="items">A set of IHilbertIndexable sorted according to IHilbertIndexable.Hid</param>
+        /// <param name="hilbertCode">
+        /// The HilbertCode used to produce IHilbertIndexable.Hid for the items. Must be the same resolution and
+        /// projection, otherwise the ids and the search ranges live in different coordinate systems.
+        /// </param>
+        public HilbertIndex(IEnumerable<T> items, HilbertCode hilbertCode)
         {
             // Important! IHilbertSearchable are assumed to be sorted by IHilbertIndexable.Hid
             //  we can easily populate the cache sorted so don't spend expensive time sorting here and lets assume it's sorted.
             _items = items.Cast<IHilbertIndexable>().ToList();
-            _hilbertCode = new HilbertCode();
+            _hilbertCode = hilbertCode ?? throw new ArgumentNullException(nameof(hilbertCode));
         }
+
+        /// <summary>
+        /// The HilbertCode (resolution and projection) this index searches with.
+        /// </summary>
+        public HilbertCode HilbertCode => _hilbertCode;
 
         /// <summary>
         /// Find items within the given distance in meter from the given Coordinate

@@ -119,6 +119,35 @@ dotnet add package Bson.HilbertIndex
 | HIGH (19)      | 524,288²       | ~79m      | Street-level (default) |
 | ULTRAHIGH (30) | 1,073,741,824² | ~10m      | Building-level         |
 
+## Projections
+
+The curve is drawn over a square integer grid. An `IProjection` decides how the globe is stretched onto that
+square, and it is pluggable:
+
+```csharp
+// Original behaviour (default): equirectangular, straight lat/lon scaling
+var classic = new HilbertCode();
+
+// Web Mercator: conformal cells, aligned with XYZ map tiles
+var mercator = new HilbertCode(HilbertCode.Resolution.HIGH, new WebMercatorProjection());
+
+// The index must use the same HilbertCode that produced the items' Hid values
+var index = new HilbertIndex<Location>(locations, mercator);
+```
+
+| Projection              | Cells                                   | Ground size at order 19       | Notes                                                                     |
+| ----------------------- | --------------------------------------- | ----------------------------- | ------------------------------------------------------------------------- |
+| `LinearProjection`      | 360/N° wide, 180/N° tall                | ~76m x 38m at equator         | The original 2006 mapping. Default. Cells get very narrow near the poles. |
+| `WebMercatorProjection` | Locally square, shrink with cos(lat)    | ~76m x 76m at equator         | Same grid as XYZ tiles at zoom = order (y flipped). Cut off at ±85.05°.   |
+
+A Hilbert id from one projection is not comparable with an id from another. Pick one per dataset and stick to it.
+
+With `WebMercatorProjection`, shifting an id right by two bits per level gives the id of the containing map tile
+at that zoom, which makes the Hilbert key double as a tile key.
+
+Implement `IProjection` yourself to use another mapping, for example a cube face projection to get S2 style
+uniformity, or a local projected CRS for a single-country dataset.
+
 ## License
 
 MIT
