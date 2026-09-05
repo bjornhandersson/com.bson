@@ -498,4 +498,23 @@ public class TileBuilderTests
 
         return rings;
     }
+
+    [Test]
+    public void Build_PointWithNullAttribute_DropsOnlyThatTag()
+    {
+        var bytes = new TileBuilder(Z, X, Y)
+            .Layer("points")
+            .AddPoint(
+                59.3281936,
+                18.0440866,
+                new Dictionary<string, object> { ["name"] = "Stockholm", ["note"] = null! }
+            )
+            .Build();
+
+        var tile = Tile.Parser.ParseFrom(bytes);
+        var layer = tile.Layers[0];
+
+        Assert.That(layer.Features[0].Tags, Is.EqualTo(new uint[] { 0, 0 }));
+        Assert.That(layer.Keys, Is.EqualTo(new[] { "name" }));
+    }
 }

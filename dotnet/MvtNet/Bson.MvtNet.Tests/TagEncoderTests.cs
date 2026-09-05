@@ -82,4 +82,50 @@ public class TagEncoderTests
             encoder.Encode(new Dictionary<string, object> { ["date"] = DateTime.Now })
         );
     }
+
+    [Test]
+    public void Encode_NullValueInDictionary_IsSkipped()
+    {
+        var encoder = new TagEncoder();
+        var tags = encoder.Encode(
+            new Dictionary<string, object>
+            {
+                ["name"] = "Stockholm",
+                ["nickname"] = null!,
+                ["population"] = 1000000L,
+            }
+        );
+
+        Assert.That(tags, Is.EqualTo(new uint[] { 0, 0, 1, 1 }));
+        Assert.That(encoder.Keys, Is.EqualTo(new[] { "name", "population" }));
+        Assert.That(encoder.Values, Has.Count.EqualTo(2));
+    }
+
+    [Test]
+    public void Encode_NullValueInLazyEnumerable_IsSkipped()
+    {
+        var encoder = new TagEncoder();
+        IEnumerable<KeyValuePair<string, object>> Attributes()
+        {
+            yield return new("a", 1);
+            yield return new("b", null!);
+            yield return new("c", true);
+        }
+
+        var tags = encoder.Encode(Attributes());
+
+        Assert.That(tags, Is.EqualTo(new uint[] { 0, 0, 1, 1 }));
+        Assert.That(encoder.Keys, Is.EqualTo(new[] { "a", "c" }));
+    }
+
+    [Test]
+    public void Encode_AllValuesNull_ProducesNoTags()
+    {
+        var encoder = new TagEncoder();
+        var tags = encoder.Encode(new Dictionary<string, object> { ["x"] = null! });
+
+        Assert.That(tags, Is.Empty);
+        Assert.That(encoder.Keys, Is.Empty);
+        Assert.That(encoder.Values, Is.Empty);
+    }
 }

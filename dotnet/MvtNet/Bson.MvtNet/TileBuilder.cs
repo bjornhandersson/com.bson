@@ -72,6 +72,11 @@ public sealed class TileBuilder
     }
 }
 
+/// <summary>
+/// Adds features to one named layer of a tile. Attribute values may be string,
+/// bool, int, long, float or double; pairs with a null value are dropped, and
+/// any other type throws <see cref="ArgumentException"/>.
+/// </summary>
 public sealed class LayerBuilder
 {
     private readonly string _name;

@@ -29,8 +29,17 @@ internal class TagEncoder
             int pos = 0;
             foreach (var (key, value) in collection)
             {
+                if (value is null)
+                {
+                    continue;
+                }
                 tags[pos++] = (uint)GetOrAddKey(key);
                 tags[pos++] = (uint)GetOrAddValue(value);
+            }
+
+            if (pos < tags.Length)
+            {
+                Array.Resize(ref tags, pos);
             }
             return tags;
         }
@@ -38,6 +47,10 @@ internal class TagEncoder
         var tagList = new List<uint>();
         foreach (var (key, value) in attributes)
         {
+            if (value is null)
+            {
+                continue;
+            }
             tagList.Add((uint)GetOrAddKey(key));
             tagList.Add((uint)GetOrAddValue(value));
         }
