@@ -22,9 +22,14 @@ public sealed class TileBuilder
     /// <param name="x">Tile column, 0 to 2^z - 1.</param>
     /// <param name="y">Tile row (XYZ scheme, 0 at the north), 0 to 2^z - 1.</param>
     /// <param name="extent">Tile-local coordinate resolution. The spec default of 4096 suits almost all uses.</param>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when z, x or y is outside its valid range.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when z, x or y is outside its valid range, or extent is zero.</exception>
     public TileBuilder(int z, int x, int y, uint extent = TileMath.DefaultExtent)
     {
+        if (extent == 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(extent), extent, "extent must be greater than zero.");
+        }
+
         if (z < 0 || z > 30)
         {
             throw new ArgumentOutOfRangeException(nameof(z), z, "z must be in [0, 30].");
@@ -76,7 +81,20 @@ public sealed class TileBuilder
     /// Serializes all layers into an MVT protobuf, ready to be served as
     /// <c>application/vnd.mapbox-vector-tile</c>.
     /// </summary>
-    public byte[] Build()
+    public byte[] Build() => BuildMessage().ToByteArray();
+
+    /// <summary>
+    /// Serializes all layers into an MVT protobuf and writes it to
+    /// <paramref name="output"/>, avoiding the intermediate byte array. Handy
+    /// for writing straight to an HTTP response body.
+    /// </summary>
+    public void Build(Stream output)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+        BuildMessage().WriteTo(output);
+    }
+
+    private Tile BuildMessage()
     {
         var tile = new Tile();
 
@@ -85,14 +103,17 @@ public sealed class TileBuilder
             tile.Layers.Add(layer.BuildLayer());
         }
 
-        return tile.ToByteArray();
+        return tile;
     }
 }
 
 /// <summary>
 /// Adds features to one named layer of a tile. Attribute values may be string,
-/// bool, int, long, float or double; pairs with a null value are dropped, and
-/// any other type throws <see cref="ArgumentException"/>.
+/// bool, any integer primitive, float, double, decimal (stored as double) or an
+/// enum (stored by name); pairs with a null value are dropped, and any other
+/// type throws <see cref="ArgumentException"/>.
+/// Coordinate sequences are accepted as any <see cref="IEnumerable{T}"/>;
+/// arrays are used directly without copying.
 /// </summary>
 public sealed class LayerBuilder
 {
@@ -151,21 +172,24 @@ public sealed class LayerBuilder
     /// doesn't overlap the tile at all.
     /// </summary>
     public LayerBuilder AddLineString(
-        ReadOnlySpan<(double Lat, double Lng)> coords,
+        IEnumerable<(double Lat, double Lng)> coords,
         IEnumerable<KeyValuePair<string, object>>? attributes = null
     )
     {
-        if (coords.Length < 2)
+        ArgumentNullException.ThrowIfNull(coords);
+        var points = Materialize(coords);
+
+        if (points.Length < 2)
         {
             return this;
         }
 
-        if (!OverlapsTile(coords))
+        if (!OverlapsTile(points))
         {
             return this;
         }
 
-        var tileCoords = ProjectAll(coords);
+        var tileCoords = ProjectAll(points);
 
         uint[]? encodedTags = null;
         if (attributes is not null)
@@ -196,21 +220,24 @@ public sealed class LayerBuilder
     /// tile boundaries render correctly.
     /// </summary>
     public LayerBuilder AddPolygon(
-        ReadOnlySpan<(double Lat, double Lng)> ring,
+        IEnumerable<(double Lat, double Lng)> ring,
         IEnumerable<KeyValuePair<string, object>>? attributes = null
     )
     {
-        if (ring.Length < 3)
+        ArgumentNullException.ThrowIfNull(ring);
+        var points = Materialize(ring);
+
+        if (points.Length < 3)
         {
             return this;
         }
 
-        if (!OverlapsTile(ring))
+        if (!OverlapsTile(points))
         {
             return this;
         }
 
-        var tileCoords = ProjectAll(ring);
+        var tileCoords = ProjectAll(points);
         GeometryEncoder.Orient(tileCoords, exterior: true);
 
         var feature = new Tile.Types.Feature { Id = _nextId++, Type = Tile.Types.GeomType.Polygon };
@@ -234,28 +261,32 @@ public sealed class LayerBuilder
     /// invalid the whole feature is skipped.
     /// </summary>
     public LayerBuilder AddPolygon(
-        ReadOnlySpan<(double Lat, double Lng)> outer,
-        IReadOnlyList<(double Lat, double Lng)[]> holes,
+        IEnumerable<(double Lat, double Lng)> outer,
+        IEnumerable<IEnumerable<(double Lat, double Lng)>> holes,
         IEnumerable<KeyValuePair<string, object>>? attributes = null
     )
     {
-        if (outer.Length < 3)
+        ArgumentNullException.ThrowIfNull(outer);
+        ArgumentNullException.ThrowIfNull(holes);
+        var outerPoints = Materialize(outer);
+
+        if (outerPoints.Length < 3)
         {
             return this;
         }
 
-        if (!OverlapsTile(outer))
+        if (!OverlapsTile(outerPoints))
         {
             return this;
         }
 
-        var outerCoords = ProjectAll(outer);
+        var outerCoords = ProjectAll(outerPoints);
         GeometryEncoder.Orient(outerCoords, exterior: true);
 
-        var rings = new List<TileCoord[]>(1 + holes.Count) { outerCoords };
-        for (int i = 0; i < holes.Count; i++)
+        var rings = new List<TileCoord[]> { outerCoords };
+        foreach (var holeEnumerable in holes)
         {
-            var hole = holes[i];
+            var hole = Materialize(holeEnumerable);
             if (hole.Length < 3)
             {
                 continue;
@@ -335,6 +366,13 @@ public sealed class LayerBuilder
     }
 
     /// <summary>
+    /// Returns the coordinates as an array, reusing the caller's array when one
+    /// was passed and copying otherwise.
+    /// </summary>
+    private static (double Lat, double Lng)[] Materialize(IEnumerable<(double Lat, double Lng)> coords) =>
+        coords as (double Lat, double Lng)[] ?? coords.ToArray();
+
+    /// <summary>
     /// Checks whether the bounding box of the coordinates overlaps the tile.
     /// </summary>
     private bool OverlapsTile(ReadOnlySpan<(double Lat, double Lng)> coords)
@@ -405,6 +443,12 @@ public sealed class LayerBuilder
     /// Builds the tile. Shortcut for calling Build() on the parent TileBuilder.
     /// </summary>
     public byte[] Build() => _tile.Build();
+
+    /// <summary>
+    /// Builds the tile into a stream. Shortcut for calling Build(Stream) on the
+    /// parent TileBuilder.
+    /// </summary>
+    public void Build(Stream output) => _tile.Build(output);
 
     internal Tile.Types.Layer BuildLayer()
     {

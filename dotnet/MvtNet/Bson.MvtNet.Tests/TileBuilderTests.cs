@@ -517,4 +517,92 @@ public class TileBuilderTests
         Assert.That(layer.Features[0].Tags, Is.EqualTo(new uint[] { 0, 0 }));
         Assert.That(layer.Keys, Is.EqualTo(new[] { "name" }));
     }
+
+    [Test]
+    public void Constructor_ZeroExtent_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new TileBuilder(Z, X, Y, extent: 0));
+    }
+
+    [Test]
+    public void AddLineString_AcceptsListAndLazyEnumerable()
+    {
+        var points = new List<(double Lat, double Lng)>
+        {
+            (59.3281936, 18.0440866),
+            (59.3300000, 18.0500000),
+            (59.3320000, 18.0550000),
+        };
+
+        var fromList = new TileBuilder(Z, X, Y).Layer("tracks").AddLineString(points).Build();
+        var fromLinq = new TileBuilder(Z, X, Y)
+            .Layer("tracks")
+            .AddLineString(points.Select(p => (p.Lat, p.Lng)))
+            .Build();
+        var fromArray = new TileBuilder(Z, X, Y).Layer("tracks").AddLineString(points.ToArray()).Build();
+
+        Assert.That(Tile.Parser.ParseFrom(fromList).Layers[0].Features, Has.Count.EqualTo(1));
+        Assert.That(fromLinq, Is.EqualTo(fromList));
+        Assert.That(fromArray, Is.EqualTo(fromList));
+    }
+
+    [Test]
+    public void AddPolygon_AcceptsListOfListsForHoles()
+    {
+        var outer = new List<(double Lat, double Lng)>
+        {
+            (59.3400, 18.0300),
+            (59.3400, 18.0700),
+            (59.3200, 18.0700),
+            (59.3200, 18.0300),
+        };
+        var holes = new List<List<(double Lat, double Lng)>>
+        {
+            new()
+            {
+                (59.3350, 18.0400),
+                (59.3350, 18.0600),
+                (59.3250, 18.0600),
+                (59.3250, 18.0400),
+            },
+        };
+
+        var bytes = new TileBuilder(Z, X, Y).Layer("geofences").AddPolygon(outer, holes).Build();
+
+        var rings = DecodeRings(Tile.Parser.ParseFrom(bytes).Layers[0].Features[0].Geometry);
+        Assert.That(rings, Has.Count.EqualTo(2));
+    }
+
+    [Test]
+    public void AddLineString_NullCoords_Throws()
+    {
+        var layer = new TileBuilder(Z, X, Y).Layer("tracks");
+
+        Assert.Throws<ArgumentNullException>(() => layer.AddLineString(null!));
+    }
+
+    [Test]
+    public void Build_ToStream_MatchesByteArray()
+    {
+        var tile = new TileBuilder(Z, X, Y);
+        tile.Layer("points")
+            .AddPoint(59.3281936, 18.0440866, new Dictionary<string, object> { ["name"] = "Stockholm" });
+
+        var bytes = tile.Build();
+        using var ms = new MemoryStream();
+        tile.Build(ms);
+
+        Assert.That(ms.ToArray(), Is.EqualTo(bytes));
+    }
+
+    [Test]
+    public void LayerBuilder_BuildToStream_MatchesByteArray()
+    {
+        var layer = new TileBuilder(Z, X, Y).Layer("points").AddPoint(59.3281936, 18.0440866);
+
+        using var ms = new MemoryStream();
+        layer.Build(ms);
+
+        Assert.That(ms.ToArray(), Is.EqualTo(layer.Build()));
+    }
 }

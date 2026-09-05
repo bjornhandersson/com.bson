@@ -12,7 +12,8 @@ tile.Layer("trucks").AddPoint(lat, lng, new() { ["speed"] = 82.5 });
 return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
 ```
 
-Projection, clipping, and encoding happen automatically.
+Projection, clipping, and encoding happen automatically. To skip the intermediate
+byte array, write straight to a stream with `tile.Build(response.Body)`.
 
 ## Show 100k delivery trucks on a map
 
@@ -46,7 +47,7 @@ A track might span 200 tiles. Each tile only encodes its visible segment — cli
 
 ```csharp
 var tile = new TileBuilder(z, x, y);
-var track = gpxFile.Points.Select(p => (p.Lat, p.Lng)).ToArray();
+var track = gpxFile.Points.Select(p => (p.Lat, p.Lng));
 
 tile.Layer("track").AddLineString(track, new Dictionary<string, object>
 {
@@ -120,7 +121,7 @@ app.MapGet("/tiles/{z:int}/{x:int}/{y:int}", async (int z, int x, int y, DbConne
 - **Projection** — WGS84 lat/lng to tile pixel coordinates
 - **Clipping** — lines crossing tile boundaries are cut cleanly
 - **Encoding** — MVT spec v2.1 protobuf, delta-encoded geometry, interned tags
-- **Attributes** — string, bool, int/long, float/double become tags; null values are dropped
+- **Attributes** — string, bool, integers, float/double, decimal and enums become tags; null values are dropped
 - **Winding order** — polygon rings are normalized to the spec's orientation (exterior clockwise, holes counter-clockwise), whatever order you pass them in
 - **GeoJSON ingestion** — drop a whole `FeatureCollection` onto a layer in one call
 - **Geohash bridge** — tile z/x/y to geohash prefixes for indexed DB queries

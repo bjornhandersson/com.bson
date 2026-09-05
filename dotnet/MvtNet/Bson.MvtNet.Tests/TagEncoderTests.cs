@@ -128,4 +128,55 @@ public class TagEncoderTests
         Assert.That(encoder.Keys, Is.Empty);
         Assert.That(encoder.Values, Is.Empty);
     }
+
+    private enum Status
+    {
+        Active,
+        Idle,
+    }
+
+    [Test]
+    public void Encode_SmallIntegerTypes_BecomeSintValues()
+    {
+        var encoder = new TagEncoder();
+        encoder.Encode(
+            new Dictionary<string, object>
+            {
+                ["a"] = (byte)1,
+                ["b"] = (sbyte)-2,
+                ["c"] = (short)-3,
+                ["d"] = (ushort)4,
+                ["e"] = 5u,
+            }
+        );
+
+        Assert.That(encoder.Values.Select(v => v.SintValue), Is.EqualTo(new long[] { 1, -2, -3, 4, 5 }));
+    }
+
+    [Test]
+    public void Encode_ULongValue_BecomesUintValue()
+    {
+        var encoder = new TagEncoder();
+        encoder.Encode(new Dictionary<string, object> { ["big"] = ulong.MaxValue });
+
+        Assert.That(encoder.Values[0].UintValue, Is.EqualTo(ulong.MaxValue));
+    }
+
+    [Test]
+    public void Encode_DecimalValue_BecomesDoubleValue()
+    {
+        var encoder = new TagEncoder();
+        encoder.Encode(new Dictionary<string, object> { ["price"] = 19.99m });
+
+        Assert.That(encoder.Values[0].DoubleValue, Is.EqualTo(19.99));
+    }
+
+    [Test]
+    public void Encode_EnumValue_BecomesItsName()
+    {
+        var encoder = new TagEncoder();
+        encoder.Encode(new Dictionary<string, object> { ["status"] = Status.Idle });
+
+        Assert.That(encoder.Values[0].StringValue, Is.EqualTo("Idle"));
+    }
 }
