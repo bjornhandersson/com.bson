@@ -74,7 +74,6 @@ public static class Geohash
 #endif
     }
 
-    /// <summary>Math.Clamp arrived in .NET Core 2.0; this works everywhere.</summary>
     private static double Clamp(double value, double min, double max) =>
         value < min ? min
         : value > max ? max
@@ -133,10 +132,6 @@ public static class Geohash
         return new GeohashBounds(minLat, maxLat, minLng, maxLng);
     }
 
-    /// <summary>
-    /// Returns all geohash cells at the given precision that overlap the bounding box.
-    /// Steps through the bbox in cell-sized increments using cell centers.
-    /// </summary>
     internal static List<string> GetCovering(
         double south,
         double north,
@@ -145,7 +140,6 @@ public static class Geohash
         int precision
     )
     {
-        // Get cell dimensions at this precision
         var sample = Decode(Encode(south, west, precision));
         double cellHeight = sample.North - sample.South;
         double cellWidth = sample.East - sample.West;
@@ -169,7 +163,6 @@ public static class Geohash
                     precision
                 );
 
-                // Only include cells that actually overlap the bbox
                 var cell = Decode(hash);
                 if (
                     cell.North >= south

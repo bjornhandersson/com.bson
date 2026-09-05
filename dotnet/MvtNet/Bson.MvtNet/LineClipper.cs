@@ -1,16 +1,7 @@
 namespace Bson.MvtNet;
 
-/// <summary>
-/// Clips a LineString to a rectangular region defined by (min, min) to (max, max).
-/// Returns a list of clipped segments — each segment is a separate continuous run
-/// of coordinates inside the clip region.
-/// </summary>
 internal static class LineClipper
 {
-    /// <summary>
-    /// Clips a projected LineString to the tile extent plus a buffer margin.
-    /// Returns zero or more clipped segments.
-    /// </summary>
     public static List<TileCoord[]> Clip(
         TileCoord[] coords,
         uint extent,
@@ -83,9 +74,7 @@ internal static class LineClipper
         return segments;
     }
 
-    /// <summary>
-    /// Cohen-Sutherland line clipping. Returns clipped segment or null if entirely outside.
-    /// </summary>
+    // Cohen-Sutherland.
     private static (int X1, int Y1, int X2, int Y2)? ClipSegment(
         double x1,
         double y1,
@@ -102,9 +91,11 @@ internal static class LineClipper
 
         while (true)
         {
-            if ((code1 | code2) == 0)
+            bool bothInside = (code1 | code2) == 0;
+            bool bothOutsideSameSide = (code1 & code2) != 0;
+
+            if (bothInside)
             {
-                // Both inside
                 return (
                     (int)Math.Round(x1),
                     (int)Math.Round(y1),
@@ -113,9 +104,8 @@ internal static class LineClipper
                 );
             }
 
-            if ((code1 & code2) != 0)
+            if (bothOutsideSameSide)
             {
-                // Both outside same side
                 return null;
             }
 

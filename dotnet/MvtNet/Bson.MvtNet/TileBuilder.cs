@@ -1,3 +1,6 @@
+#if !NETSTANDARD2_0
+using System.Runtime.InteropServices;
+#endif
 using System.Text.Json;
 using Google.Protobuf;
 using VectorTile;
@@ -162,7 +165,7 @@ public sealed class LayerBuilder
 
         if (attributes is not null)
         {
-            feature.Tags.AddRange(_tags.Encode(attributes));
+            _tags.EncodeInto(attributes, feature.Tags);
         }
 
         _features.Add(feature);
@@ -263,7 +266,7 @@ public sealed class LayerBuilder
 
         if (attributes is not null)
         {
-            feature.Tags.AddRange(_tags.Encode(attributes));
+            _tags.EncodeInto(attributes, feature.Tags);
         }
 
         _features.Add(feature);
@@ -337,7 +340,7 @@ public sealed class LayerBuilder
 
         if (attributes is not null)
         {
-            feature.Tags.AddRange(_tags.Encode(attributes));
+            _tags.EncodeInto(attributes, feature.Tags);
         }
 
         _features.Add(feature);
@@ -401,16 +404,25 @@ public sealed class LayerBuilder
         return this;
     }
 
-    /// <summary>
-    /// Returns the coordinates as an array, reusing the caller's array when one
-    /// was passed and copying otherwise.
-    /// </summary>
-    private static (double Lat, double Lng)[] Materialize(IEnumerable<(double Lat, double Lng)> coords) =>
-        coords as (double Lat, double Lng)[] ?? coords.ToArray();
+    private static ReadOnlySpan<(double Lat, double Lng)> Materialize(
+        IEnumerable<(double Lat, double Lng)> coords
+    )
+    {
+        if (coords is (double Lat, double Lng)[] array)
+        {
+            return array;
+        }
 
-    /// <summary>
-    /// Checks whether the bounding box of the coordinates overlaps the tile.
-    /// </summary>
+#if !NETSTANDARD2_0
+        if (coords is List<(double Lat, double Lng)> list)
+        {
+            return CollectionsMarshal.AsSpan(list);
+        }
+#endif
+
+        return coords.ToArray();
+    }
+
     private bool OverlapsTile(ReadOnlySpan<(double Lat, double Lng)> coords)
     {
         var tileBounds = _ctx.Bounds;

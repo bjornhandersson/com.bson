@@ -41,9 +41,8 @@ public class PolygonClippingTests
     [Test]
     public void AddPolygon_RingReachingThePoles_StaysWithinTheBuffer()
     {
-        // This is the timezone case: a ring running pole to pole projects to
-        // Mercator Y values far outside the tile. Unclipped it overflowed the
-        // 16-bit vertex buffers renderers use, drawing wedges across the tile.
+        // A ring running pole to pole projects to Mercator Y values far outside
+        // the tile; unclipped, they reached six figures against an extent of 4096.
         var ring = new[] { (85.0, 17.0), (85.0, 19.0), (-85.0, 19.0), (-85.0, 17.0) };
 
         var bytes = new TileBuilder(Z, X, Y).Layer("zones").AddPolygon(ring).Tile.Build();

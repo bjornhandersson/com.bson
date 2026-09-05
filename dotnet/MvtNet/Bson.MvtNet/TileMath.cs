@@ -1,22 +1,12 @@
 namespace Bson.MvtNet;
 
-/// <summary>
-/// Converts WGS84 coordinates to tile-local coordinates using Web Mercator projection.
-/// </summary>
 internal static class TileMath
 {
     public const uint DefaultExtent = 4096;
 
-    /// <summary>
-    /// Fraction of the extent kept outside the tile when clipping geometry, so
-    /// strokes and fills meet cleanly across tile seams instead of ending at the
-    /// exact edge.
-    /// </summary>
+    // Kept outside the tile so fills and strokes meet across tile seams.
     internal const double DefaultClipBufferFraction = 0.05;
 
-    /// <summary>
-    /// Returns the WGS84 bounding box for a tile at the given z/x/y.
-    /// </summary>
     public static TileBounds GetTileBounds(int z, int x, int y)
     {
         double n = 1 << z;
@@ -28,10 +18,6 @@ internal static class TileMath
         return new TileBounds(north, south, east, west);
     }
 
-    /// <summary>
-    /// Projects a WGS84 point into tile-local integer coordinates (0..extent).
-    /// Returns null if the point is outside the tile bounds.
-    /// </summary>
     public static TileCoord? ProjectPoint(
         double lat,
         double lng,
@@ -51,11 +37,6 @@ internal static class TileMath
         return ProjectWithBounds(lat, lng, bounds, extent);
     }
 
-    /// <summary>
-    /// Projects a WGS84 point into tile-local coordinates without bounds checking.
-    /// Coordinates may be negative or exceed the extent — this is valid for MVT
-    /// geometry that crosses tile boundaries (LineStrings, Polygons).
-    /// </summary>
     internal static TileCoord ProjectPointUnclamped(
         double lat,
         double lng,
@@ -69,10 +50,6 @@ internal static class TileMath
         return ProjectWithBounds(lat, lng, bounds, extent);
     }
 
-    /// <summary>
-    /// Projects a WGS84 point using pre-computed tile bounds and Mercator Y values.
-    /// Use this when projecting many points on the same tile to avoid redundant work.
-    /// </summary>
     internal static TileCoord ProjectWithContext(
         double lat,
         double lng,
@@ -89,10 +66,6 @@ internal static class TileMath
         return new TileCoord(px, py);
     }
 
-    /// <summary>
-    /// Creates a reusable projection context for a tile. Pre-computes bounds and
-    /// Mercator Y values so they aren't recalculated per point.
-    /// </summary>
     internal static TileProjectionContext CreateProjectionContext(
         int z,
         int x,
@@ -113,9 +86,6 @@ internal static class TileMath
         );
     }
 
-    /// <summary>
-    /// Checks whether a WGS84 point falls within the given tile.
-    /// </summary>
     public static bool Contains(double lat, double lng, int z, int x, int y)
     {
         var bounds = GetTileBounds(z, x, y);
@@ -158,10 +128,6 @@ internal static class TileMath
     }
 }
 
-/// <summary>
-/// Pre-computed projection parameters for a tile. Avoids recalculating bounds
-/// and Mercator transforms when projecting many points on the same tile.
-/// </summary>
 internal readonly record struct TileProjectionContext(
     TileBounds Bounds,
     uint Extent,

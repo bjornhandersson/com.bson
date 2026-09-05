@@ -1,10 +1,11 @@
+using Google.Protobuf.Collections;
+#if !NETSTANDARD2_0
+using System.Runtime.InteropServices;
+#endif
 using VectorTile;
 
 namespace Bson.MvtNet;
 
-/// <summary>
-/// Manages key/value dictionaries per layer and encodes feature tags as index pairs.
-/// </summary>
 internal class TagEncoder
 {
     private readonly Dictionary<string, int> _keys = new();
@@ -17,12 +18,6 @@ internal class TagEncoder
     private readonly List<string> _keyList = new();
     private readonly List<Tile.Types.Value> _valueList = new();
 
-    /// <summary>
-    /// Encodes a set of key/value pairs into tag index pairs for a feature.
-    /// Supported value types: string, bool, all integer primitives, float,
-    /// double, decimal (stored as double) and enums (stored by name).
-    /// Pairs with a null value are skipped, since MVT has no null tag type.
-    /// </summary>
     public uint[] Encode(IEnumerable<KeyValuePair<string, object>> attributes)
     {
         // Fast path for the common Dictionary case where Count is known
@@ -60,11 +55,34 @@ internal class TagEncoder
         return tagList.ToArray();
     }
 
+    public void EncodeInto(
+        IEnumerable<KeyValuePair<string, object>> attributes,
+        RepeatedField<uint> tags
+    )
+    {
+        if (attributes is ICollection<KeyValuePair<string, object>> collection)
+        {
+            tags.Capacity = Math.Max(tags.Capacity, tags.Count + collection.Count * 2);
+        }
+
+        foreach (var pair in attributes)
+        {
+            if (pair.Value is null)
+            {
+                continue;
+            }
+
+            tags.Add((uint)GetOrAddKey(pair.Key));
+            tags.Add((uint)GetOrAddValue(pair.Value));
+        }
+    }
+
     public IReadOnlyList<string> Keys => _keyList;
     public IReadOnlyList<Tile.Types.Value> Values => _valueList;
 
     private int GetOrAddKey(string key)
     {
+#if NETSTANDARD2_0
         if (_keys.TryGetValue(key, out int index))
         {
             return index;
@@ -74,6 +92,47 @@ internal class TagEncoder
         _keys[key] = index;
         _keyList.Add(key);
         return index;
+#else
+        ref int slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_keys, key, out bool existed);
+        if (existed)
+        {
+            return slot;
+        }
+
+        slot = _keyList.Count;
+        _keyList.Add(key);
+        return slot;
+#endif
+    }
+
+    private int Intern<TKey>(
+        Dictionary<TKey, int> map,
+        TKey key,
+        Func<TKey, Tile.Types.Value> make
+    )
+        where TKey : notnull
+    {
+#if NETSTANDARD2_0
+        if (map.TryGetValue(key, out int index))
+        {
+            return index;
+        }
+
+        index = _valueList.Count;
+        map[key] = index;
+        _valueList.Add(make(key));
+        return index;
+#else
+        ref int slot = ref CollectionsMarshal.GetValueRefOrAddDefault(map, key, out bool existed);
+        if (existed)
+        {
+            return slot;
+        }
+
+        slot = _valueList.Count;
+        _valueList.Add(make(key));
+        return slot;
+#endif
     }
 
     private int GetOrAddValue(object value)
@@ -101,81 +160,21 @@ internal class TagEncoder
         };
     }
 
-    private int GetOrAddStringValue(string s)
-    {
-        if (_stringValues.TryGetValue(s, out int index))
-        {
-            return index;
-        }
+    private int GetOrAddStringValue(string s) =>
+        Intern(_stringValues, s, static v => new Tile.Types.Value { StringValue = v });
 
-        index = _valueList.Count;
-        _stringValues[s] = index;
-        _valueList.Add(new Tile.Types.Value { StringValue = s });
-        return index;
-    }
+    private int GetOrAddFloatValue(float f) =>
+        Intern(_floatValues, f, static v => new Tile.Types.Value { FloatValue = v });
 
-    private int GetOrAddFloatValue(float f)
-    {
-        if (_floatValues.TryGetValue(f, out int index))
-        {
-            return index;
-        }
+    private int GetOrAddDoubleValue(double d) =>
+        Intern(_doubleValues, d, static v => new Tile.Types.Value { DoubleValue = v });
 
-        index = _valueList.Count;
-        _floatValues[f] = index;
-        _valueList.Add(new Tile.Types.Value { FloatValue = f });
-        return index;
-    }
+    private int GetOrAddIntValue(long l) =>
+        Intern(_intValues, l, static v => new Tile.Types.Value { SintValue = v });
 
-    private int GetOrAddDoubleValue(double d)
-    {
-        if (_doubleValues.TryGetValue(d, out int index))
-        {
-            return index;
-        }
+    private int GetOrAddUintValue(ulong u) =>
+        Intern(_uintValues, u, static v => new Tile.Types.Value { UintValue = v });
 
-        index = _valueList.Count;
-        _doubleValues[d] = index;
-        _valueList.Add(new Tile.Types.Value { DoubleValue = d });
-        return index;
-    }
-
-    private int GetOrAddIntValue(long l)
-    {
-        if (_intValues.TryGetValue(l, out int index))
-        {
-            return index;
-        }
-
-        index = _valueList.Count;
-        _intValues[l] = index;
-        _valueList.Add(new Tile.Types.Value { SintValue = l });
-        return index;
-    }
-
-    private int GetOrAddUintValue(ulong u)
-    {
-        if (_uintValues.TryGetValue(u, out int index))
-        {
-            return index;
-        }
-
-        index = _valueList.Count;
-        _uintValues[u] = index;
-        _valueList.Add(new Tile.Types.Value { UintValue = u });
-        return index;
-    }
-
-    private int GetOrAddBoolValue(bool b)
-    {
-        if (_boolValues.TryGetValue(b, out int index))
-        {
-            return index;
-        }
-
-        index = _valueList.Count;
-        _boolValues[b] = index;
-        _valueList.Add(new Tile.Types.Value { BoolValue = b });
-        return index;
-    }
+    private int GetOrAddBoolValue(bool b) =>
+        Intern(_boolValues, b, static v => new Tile.Types.Value { BoolValue = v });
 }

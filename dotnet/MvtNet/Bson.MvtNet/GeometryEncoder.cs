@@ -1,25 +1,16 @@
 namespace Bson.MvtNet;
 
-/// <summary>
-/// Encodes MVT geometry commands (MoveTo, LineTo, ClosePath) with zigzag + delta encoding.
-/// </summary>
 internal static class GeometryEncoder
 {
     private const uint MoveToId = 1;
     private const uint LineToId = 2;
     private const uint ClosePathId = 7;
 
-    /// <summary>
-    /// Encodes a Point geometry (single MoveTo command).
-    /// </summary>
     public static uint[] EncodePoint(int x, int y)
     {
         return new[] { CommandInteger(MoveToId, 1), ZigZag(x), ZigZag(y) };
     }
 
-    /// <summary>
-    /// Encodes a LineString geometry (MoveTo + LineTo commands with delta encoding).
-    /// </summary>
     public static uint[] EncodeLineString(ReadOnlySpan<TileCoord> coords)
     {
         if (coords.Length < 2)
@@ -35,12 +26,10 @@ internal static class GeometryEncoder
         var commands = new uint[count];
         int pos = 0;
 
-        // MoveTo first point
         commands[pos++] = CommandInteger(MoveToId, 1);
         commands[pos++] = ZigZag(coords[0].X);
         commands[pos++] = ZigZag(coords[0].Y);
 
-        // LineTo remaining points (delta from previous)
         commands[pos++] = CommandInteger(LineToId, (uint)(coords.Length - 1));
         int prevX = coords[0].X;
         int prevY = coords[0].Y;
@@ -55,10 +44,7 @@ internal static class GeometryEncoder
         return commands;
     }
 
-    /// <summary>
-    /// Encodes a Polygon geometry (MoveTo + LineTo + ClosePath, with delta encoding).
-    /// The ring should NOT repeat the first point — ClosePath handles closure.
-    /// </summary>
+    // The ring must not repeat its first point; ClosePath closes it.
     public static uint[] EncodePolygon(ReadOnlySpan<TileCoord> ring)
     {
         if (ring.Length < 3)
@@ -74,12 +60,10 @@ internal static class GeometryEncoder
         var commands = new uint[count];
         int pos = 0;
 
-        // MoveTo first point
         commands[pos++] = CommandInteger(MoveToId, 1);
         commands[pos++] = ZigZag(ring[0].X);
         commands[pos++] = ZigZag(ring[0].Y);
 
-        // LineTo remaining points (delta from previous)
         commands[pos++] = CommandInteger(LineToId, (uint)(ring.Length - 1));
         int prevX = ring[0].X;
         int prevY = ring[0].Y;
@@ -91,18 +75,12 @@ internal static class GeometryEncoder
             prevY = ring[i].Y;
         }
 
-        // ClosePath
         commands[pos++] = CommandInteger(ClosePathId, 1);
 
         return commands;
     }
 
-    /// <summary>
-    /// Encodes a Polygon geometry with one or more rings. The first ring is the
-    /// outer boundary; remaining rings are holes. Rings should NOT repeat their
-    /// first point. The MVT cursor is continuous across rings; ClosePath returns
-    /// it to the start of the current ring before the next MoveTo.
-    /// </summary>
+    // First ring is the outer boundary, the rest are holes.
     public static uint[] EncodePolygon(IReadOnlyList<TileCoord[]> rings)
     {
         if (rings.Count == 0)
@@ -158,12 +136,8 @@ internal static class GeometryEncoder
         return commands;
     }
 
-    /// <summary>
-    /// Twice the signed area of a ring via the shoelace formula, in tile
-    /// coordinates (Y grows downward). Positive means clockwise on screen,
-    /// which the MVT spec requires for exterior rings; negative means
-    /// counter-clockwise, required for interior rings (holes).
-    /// </summary>
+    // Shoelace sum, so twice the area. Y grows downward, which makes a positive
+    // result clockwise on screen: the winding MVT requires of exterior rings.
     public static double SignedArea(ReadOnlySpan<TileCoord> ring)
     {
         double sum = 0;
@@ -175,11 +149,6 @@ internal static class GeometryEncoder
         return sum;
     }
 
-    /// <summary>
-    /// Reverses the ring in place if needed so an exterior ring has positive
-    /// area and an interior ring has negative area, as the MVT spec requires.
-    /// Zero-area rings are left untouched.
-    /// </summary>
     public static void Orient(TileCoord[] ring, bool exterior)
     {
         double area = SignedArea(ring);
@@ -189,17 +158,11 @@ internal static class GeometryEncoder
         }
     }
 
-    /// <summary>
-    /// Encodes a command integer: (id &amp; 0x7) | (count &lt;&lt; 3)
-    /// </summary>
     public static uint CommandInteger(uint commandId, uint count)
     {
         return (commandId & 0x7) | (count << 3);
     }
 
-    /// <summary>
-    /// Zigzag-encodes a signed integer.
-    /// </summary>
     public static uint ZigZag(int value)
     {
         return (uint)((value << 1) ^ (value >> 31));

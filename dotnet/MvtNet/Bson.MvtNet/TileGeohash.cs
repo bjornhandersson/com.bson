@@ -18,10 +18,6 @@ public static class TileGeohash
         return Geohash.GetCovering(bounds.South, bounds.North, bounds.West, bounds.East, precision);
     }
 
-    /// <summary>
-    /// Maps zoom level to geohash precision.
-    /// Tuned for 4–16 prefixes per tile.
-    /// </summary>
     internal static int GetPrecision(int z)
     {
         // Geohash cell sizes vs tile widths (at equator):

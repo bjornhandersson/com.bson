@@ -2,13 +2,6 @@ using System.Text.Json;
 
 namespace Bson.MvtNet;
 
-/// <summary>
-/// Walks a parsed GeoJSON document and dispatches geometries to a LayerBuilder.
-/// FeatureCollection / Feature / bare Geometry are all accepted. Multi-geometries
-/// and GeometryCollection are flattened to N features sharing the source
-/// feature's tags. Source feature ids and nested properties are dropped.
-/// Malformed or unknown input is silently skipped.
-/// </summary>
 internal static class GeoJsonReader
 {
     public static void Read(LayerBuilder layer, JsonElement root)
@@ -47,11 +40,15 @@ internal static class GeoJsonReader
             return;
         }
 
+        // Reused across features; each feature's tags are consumed before the
+        // next one is read.
+        var propertyBuffer = new Dictionary<string, object>();
+
         foreach (var feature in feats.EnumerateArray())
         {
             try
             {
-                ReadFeature(layer, feature);
+                ReadFeature(layer, feature, propertyBuffer);
             }
             catch
             {
@@ -60,7 +57,11 @@ internal static class GeoJsonReader
         }
     }
 
-    private static void ReadFeature(LayerBuilder layer, JsonElement el)
+    private static void ReadFeature(
+        LayerBuilder layer,
+        JsonElement el,
+        Dictionary<string, object>? propertyBuffer = null
+    )
     {
         if (el.ValueKind != JsonValueKind.Object)
         {
@@ -78,7 +79,7 @@ internal static class GeoJsonReader
             && props.ValueKind == JsonValueKind.Object
         )
         {
-            attrs = ExtractScalarProperties(props);
+            attrs = ExtractScalarProperties(props, propertyBuffer);
         }
 
         ReadGeometry(layer, geom, attrs);
@@ -304,16 +305,22 @@ internal static class GeoJsonReader
             return Array.Empty<(double Lat, double Lng)>();
         }
 
-        var result = new List<(double Lat, double Lng)>(coords.GetArrayLength());
+        var result = new (double Lat, double Lng)[coords.GetArrayLength()];
+        int count = 0;
         foreach (var p in coords.EnumerateArray())
         {
             if (TryReadCoord(p, out var lat, out var lng))
             {
-                result.Add((lat, lng));
+                result[count++] = (lat, lng);
             }
         }
 
-        return result.ToArray();
+        if (count != result.Length)
+        {
+            Array.Resize(ref result, count);
+        }
+
+        return result;
     }
 
     private static (double Lat, double Lng)[] ReadRing(JsonElement ringEl)
@@ -357,16 +364,22 @@ internal static class GeoJsonReader
         return true;
     }
 
-    private static Dictionary<string, object>? ExtractScalarProperties(JsonElement props)
+    private static Dictionary<string, object>? ExtractScalarProperties(
+        JsonElement props,
+        Dictionary<string, object>? propertyBuffer = null
+    )
     {
         Dictionary<string, object>? attrs = null;
+        propertyBuffer?.Clear();
         foreach (var prop in props.EnumerateObject())
         {
             object? value = prop.Value.ValueKind switch
             {
                 JsonValueKind.String => prop.Value.GetString(),
+                // The cast keeps integers as integers; without it the
+                // conditional unifies to double.
                 JsonValueKind.Number => prop.Value.TryGetInt64(out var l)
-                    ? l
+                    ? (object)l
                     : prop.Value.GetDouble(),
                 JsonValueKind.True => true,
                 JsonValueKind.False => false,
@@ -378,7 +391,7 @@ internal static class GeoJsonReader
                 continue;
             }
 
-            attrs ??= new Dictionary<string, object>();
+            attrs ??= propertyBuffer ?? new Dictionary<string, object>();
             attrs[prop.Name] = value;
         }
 

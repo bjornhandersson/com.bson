@@ -354,6 +354,72 @@ public class GeoJsonReaderTests
         Assert.That(tile.Layers[0].Features, Has.Count.EqualTo(1));
     }
 
+    [Test]
+    public void AddGeoJson_FeaturesWithDifferentProperties_DoNotShareTags()
+    {
+        // The reader reuses one dictionary across a collection, so a feature
+        // must not inherit tags from the feature before it. Property sets here
+        // shrink and then go disjoint on purpose.
+        const string json = """
+            {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "geometry": { "type": "Point", "coordinates": [18.0440866, 59.3281936] },
+                        "properties": { "name": "A", "speed": 10 }
+                    },
+                    {
+                        "type": "Feature",
+                        "geometry": { "type": "Point", "coordinates": [18.0649, 59.3326] },
+                        "properties": { "name": "B" }
+                    },
+                    {
+                        "type": "Feature",
+                        "geometry": { "type": "Point", "coordinates": [18.0500, 59.3300] },
+                        "properties": { "depot": "north" }
+                    }
+                ]
+            }
+            """;
+
+        var tile = Build(layer => layer.AddGeoJson(json));
+        var layerMsg = tile.Layers[0];
+
+        Assert.That(layerMsg.Features, Has.Count.EqualTo(3));
+        Assert.That(TagsOf(layerMsg, 0), Is.EqualTo(new Dictionary<string, string>
+        {
+            ["name"] = "A",
+            ["speed"] = "10",
+        }));
+        Assert.That(TagsOf(layerMsg, 1), Is.EqualTo(new Dictionary<string, string>
+        {
+            ["name"] = "B",
+        }));
+        Assert.That(TagsOf(layerMsg, 2), Is.EqualTo(new Dictionary<string, string>
+        {
+            ["depot"] = "north",
+        }));
+    }
+
+    /// <summary>Resolves one feature's tag index pairs into key/value text.</summary>
+    private static Dictionary<string, string> TagsOf(Tile.Types.Layer layer, int featureIndex)
+    {
+        var tags = layer.Features[featureIndex].Tags;
+        var result = new Dictionary<string, string>();
+        for (int i = 0; i + 1 < tags.Count; i += 2)
+        {
+            var value = layer.Values[(int)tags[i + 1]];
+            result[layer.Keys[(int)tags[i]]] = value.HasStringValue
+                ? value.StringValue
+                : value.HasSintValue
+                    ? value.SintValue.ToString()
+                    : value.ToString();
+        }
+
+        return result;
+    }
+
     private static Tile Build(Action<LayerBuilder> configure)
     {
         var builder = new TileBuilder(Z, X, Y);

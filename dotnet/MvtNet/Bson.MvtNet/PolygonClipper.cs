@@ -1,23 +1,10 @@
 namespace Bson.MvtNet;
 
-/// <summary>
-/// Clips a polygon ring to the tile extent plus a buffer margin using the
-/// Sutherland-Hodgman algorithm.
-/// <para>
-/// Unclipped rings are a rendering hazard, not just a size problem. A ring that
-/// reaches the poles projects to Mercator Y values tens of thousands of units
-/// outside the tile, and renderers that hold fill vertices in 16-bit integers
-/// wrap those coordinates, drawing wedges across the tile.
-/// </para>
-/// </summary>
+// Sutherland-Hodgman. Bounds every emitted coordinate: a ring reaching the poles
+// projects to Mercator Y values tens of thousands of units outside the tile.
 internal static class PolygonClipper
 {
-    /// <summary>
-    /// Clips a ring to the tile extent plus a buffer. The ring must not repeat
-    /// its first point, and the result follows the same convention. Returns an
-    /// empty array when the ring falls entirely outside the clip region, or
-    /// when clipping leaves fewer than three distinct points.
-    /// </summary>
+    // Neither the ring nor the result repeats its first point. Empty when nothing survives.
     public static TileCoord[] Clip(
         TileCoord[] ring,
         uint extent,
@@ -66,9 +53,6 @@ internal static class PolygonClipper
             _ => p.Y <= max,
         };
 
-    /// <summary>
-    /// Splits the segment a-b where it crosses the given edge.
-    /// </summary>
     private static (double X, double Y) Intersect(
         (double X, double Y) a,
         (double X, double Y) b,
@@ -136,11 +120,6 @@ internal static class PolygonClipper
         return output;
     }
 
-    /// <summary>
-    /// Rounds to integer tile coordinates and drops points that collapse onto
-    /// their neighbour, including a last point that lands on the first — MVT
-    /// rings are closed by ClosePath, never by repeating a vertex.
-    /// </summary>
     private static TileCoord[] Snap(List<(double X, double Y)> points)
     {
         var result = new List<TileCoord>(points.Count);
