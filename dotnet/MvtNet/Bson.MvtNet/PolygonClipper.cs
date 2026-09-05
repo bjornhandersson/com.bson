@@ -148,7 +148,7 @@ internal static class PolygonClipper
         foreach (var p in points)
         {
             var coord = new TileCoord((int)Math.Round(p.X), (int)Math.Round(p.Y));
-            if (result.Count > 0 && result[^1] == coord)
+            if (result.Count > 0 && result[result.Count - 1] == coord)
             {
                 continue;
             }
@@ -156,7 +156,7 @@ internal static class PolygonClipper
             result.Add(coord);
         }
 
-        while (result.Count > 1 && result[^1] == result[0])
+        while (result.Count > 1 && result[result.Count - 1] == result[0])
         {
             result.RemoveAt(result.Count - 1);
         }

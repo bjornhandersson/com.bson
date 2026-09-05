@@ -90,7 +90,10 @@ public sealed class TileBuilder
     /// </summary>
     public void Build(Stream output)
     {
-        ArgumentNullException.ThrowIfNull(output);
+        if (output is null)
+        {
+            throw new ArgumentNullException(nameof(output));
+        }
         BuildMessage().WriteTo(output);
     }
 
@@ -176,7 +179,10 @@ public sealed class LayerBuilder
         IEnumerable<KeyValuePair<string, object>>? attributes = null
     )
     {
-        ArgumentNullException.ThrowIfNull(coords);
+        if (coords is null)
+        {
+            throw new ArgumentNullException(nameof(coords));
+        }
         var points = Materialize(coords);
 
         if (points.Length < 2)
@@ -224,7 +230,10 @@ public sealed class LayerBuilder
         IEnumerable<KeyValuePair<string, object>>? attributes = null
     )
     {
-        ArgumentNullException.ThrowIfNull(ring);
+        if (ring is null)
+        {
+            throw new ArgumentNullException(nameof(ring));
+        }
         var points = Materialize(ring);
 
         if (points.Length < 3)
@@ -272,8 +281,14 @@ public sealed class LayerBuilder
         IEnumerable<KeyValuePair<string, object>>? attributes = null
     )
     {
-        ArgumentNullException.ThrowIfNull(outer);
-        ArgumentNullException.ThrowIfNull(holes);
+        if (outer is null)
+        {
+            throw new ArgumentNullException(nameof(outer));
+        }
+        if (holes is null)
+        {
+            throw new ArgumentNullException(nameof(holes));
+        }
         var outerPoints = Materialize(outer);
 
         if (outerPoints.Length < 3)

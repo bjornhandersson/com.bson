@@ -30,14 +30,14 @@ internal class TagEncoder
         {
             var tags = new uint[collection.Count * 2];
             int pos = 0;
-            foreach (var (key, value) in collection)
+            foreach (var pair in collection)
             {
-                if (value is null)
+                if (pair.Value is null)
                 {
                     continue;
                 }
-                tags[pos++] = (uint)GetOrAddKey(key);
-                tags[pos++] = (uint)GetOrAddValue(value);
+                tags[pos++] = (uint)GetOrAddKey(pair.Key);
+                tags[pos++] = (uint)GetOrAddValue(pair.Value);
             }
 
             if (pos < tags.Length)
@@ -48,14 +48,14 @@ internal class TagEncoder
         }
 
         var tagList = new List<uint>();
-        foreach (var (key, value) in attributes)
+        foreach (var pair in attributes)
         {
-            if (value is null)
+            if (pair.Value is null)
             {
                 continue;
             }
-            tagList.Add((uint)GetOrAddKey(key));
-            tagList.Add((uint)GetOrAddValue(value));
+            tagList.Add((uint)GetOrAddKey(pair.Key));
+            tagList.Add((uint)GetOrAddValue(pair.Value));
         }
         return tagList.ToArray();
     }

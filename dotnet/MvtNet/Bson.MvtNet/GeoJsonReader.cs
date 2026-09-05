@@ -319,7 +319,7 @@ internal static class GeoJsonReader
     private static (double Lat, double Lng)[] ReadRing(JsonElement ringEl)
     {
         var pts = ReadCoordArray(ringEl);
-        if (pts.Length > 1 && pts[0] == pts[^1])
+        if (pts.Length > 1 && pts[0] == pts[pts.Length - 1])
         {
             Array.Resize(ref pts, pts.Length - 1);
         }

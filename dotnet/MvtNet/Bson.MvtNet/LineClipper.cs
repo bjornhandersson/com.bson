@@ -61,7 +61,7 @@ internal static class LineClipper
             {
                 current.Add(clippedA);
             }
-            else if (current[^1].X != clippedA.X || current[^1].Y != clippedA.Y)
+            else if (current[current.Count - 1].X != clippedA.X || current[current.Count - 1].Y != clippedA.Y)
             {
                 // Discontinuity — the clipped start doesn't match previous end
                 if (current.Count >= 2)

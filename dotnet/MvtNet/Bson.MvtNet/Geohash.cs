@@ -67,8 +67,18 @@ public static class Geohash
             }
         }
 
+#if NETSTANDARD2_0
+        return new string(result.ToArray());
+#else
         return new string(result);
+#endif
     }
+
+    /// <summary>Math.Clamp arrived in .NET Core 2.0; this works everywhere.</summary>
+    private static double Clamp(double value, double min, double max) =>
+        value < min ? min
+        : value > max ? max
+        : value;
 
     /// <summary>
     /// Decodes a geohash into the bounding box it represents.
@@ -154,8 +164,8 @@ public static class Geohash
             while (lng <= east + cellWidth)
             {
                 string hash = Encode(
-                    Math.Clamp(lat, -90, 90),
-                    Math.Clamp(lng, -180, 180),
+                    Clamp(lat, -90, 90),
+                    Clamp(lng, -180, 180),
                     precision
                 );
 

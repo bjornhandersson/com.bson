@@ -16,9 +16,6 @@ tile.Layer("trucks").AddPoint(lat, lng, new() { ["speed"] = 82.5 });
 return Results.Bytes(tile.Build(), "application/vnd.mapbox-vector-tile");
 ```
 
-Projection, clipping, and encoding happen automatically. To skip the intermediate
-byte array, write straight to a stream with `tile.Build(response.Body)`.
-
 [![10,000 cities served as vector tiles by MvtNet](https://raw.githubusercontent.com/bjornhandersson/com.bson/master/docs/img/mvtnet-cities.jpg)](https://github.com/bjornhandersson/com.bson/tree/master/dotnet/MvtNet/MvtNet.Demo)
 
 <p align="center"><em>10,000 cities encoded on the fly and rendered with MapLibre. Run it yourself with <code>dotnet run --project MvtNet.Demo</code>.</em></p>
