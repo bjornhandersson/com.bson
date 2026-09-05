@@ -21,6 +21,10 @@
     <Using Include="NUnit.Framework" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Spec verification tiles: known-good encoder output, compared byte for byte. -->
+    <None Include="SpecVerify\*.mvt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Bson.MvtNet\MvtNet.csproj" />
   </ItemGroup>
 </Project>

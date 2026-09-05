@@ -41,6 +41,64 @@ public class SpecExampleTests
     }
 
     [Test]
+    public void DecodeParts_MultiPointExampleFromSpec_RecoversBothPoints()
+    {
+        var parts = TestGeometry.DecodeParts(new uint[] { 17, 10, 14, 3, 9 });
+
+        Assert.That(parts, Has.Count.EqualTo(1));
+        Assert.That(parts[0], Is.EqualTo(new TileCoord[] { new(5, 7), new(3, 2) }));
+    }
+
+    [Test]
+    public void EncodeLineString_LineStringExampleFromSpec_MatchesExactly()
+    {
+        TileCoord[] line = [new(2, 2), new(2, 10), new(10, 10)];
+
+        var encoded = GeometryEncoder.EncodeLineString(line);
+
+        Assert.That(encoded, Is.EqualTo(new uint[] { 9, 4, 4, 18, 0, 16, 16, 0 }));
+    }
+
+    [Test]
+    public void EncodeMultiLineString_MultiLineStringExampleFromSpec_MatchesExactly()
+    {
+        TileCoord[] first = [new(2, 2), new(2, 10), new(10, 10)];
+        TileCoord[] second = [new(1, 1), new(3, 5)];
+
+        var encoded = GeometryEncoder.EncodeMultiLineString([first, second]);
+
+        Assert.That(encoded, Is.EqualTo(new uint[] { 9, 4, 4, 18, 0, 16, 16, 0, 9, 17, 17, 10, 4, 8 }));
+    }
+
+    [Test]
+    public void EncodePolygon_PolygonExampleFromSpec_MatchesExactly()
+    {
+        TileCoord[] ring = [new(3, 6), new(8, 12), new(20, 34)];
+
+        var encoded = GeometryEncoder.EncodePolygon(ring);
+
+        Assert.That(encoded, Is.EqualTo(new uint[] { 9, 6, 12, 18, 10, 12, 24, 44, 15 }));
+    }
+
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(-1)]
+    [TestCase(25)]
+    [TestCase(-9)]
+    [TestCase(4095)]
+    [TestCase(-4096)]
+    [TestCase(int.MaxValue)]
+    [TestCase(int.MinValue)]
+    public void ZigZag_DecodesWithTheFormulaFromSpec(int value)
+    {
+        uint parameterInteger = GeometryEncoder.ZigZag(value);
+
+        int decoded = (int)(parameterInteger >> 1) ^ -(int)(parameterInteger & 1);
+
+        Assert.That(decoded, Is.EqualTo(value));
+    }
+
+    [Test]
     public void EncodePolygon_HoleAfterClosePath_IsRelativeToLastVertexNotRingStart()
     {
         var outer = new TileCoord[] { new(0, 0), new(100, 0), new(100, 100), new(0, 100) };
